@@ -5,10 +5,16 @@
 #include <QDebug>
 #include <QtAlgorithms>
 #include <QtMath>
+#include <QJsonArray>
+#include <QJsonObject>
 
 CF_Grammar::CF_Grammar()
 {
-
+    non_terminals = QMap<QString, QVector<Path>>();
+    shortest_path = QMap<QString, Path>();
+    bad_non_terminals = QSet<QString>();
+    terminals = QSet<QString>();
+    words = QSet<QString>();
 }
 
 CF_Grammar::~CF_Grammar()
@@ -16,11 +22,36 @@ CF_Grammar::~CF_Grammar()
     non_terminals.clear();
     terminals.clear();
     rules.clear();
+    shortest_path.clear();
+    bad_non_terminals.clear();
+    words.clear();
+}
+
+//=============== Получить поля грамматики ==============================================================
+
+QString CF_Grammar::GetStartingNT()
+{
+    return starting_non_terminal;
+}
+
+QMap<QString, QVector<Path> > CF_Grammar::GetNonTerminals()
+{
+    return non_terminals;
+}
+
+QSet<QString> CF_Grammar::GetTerminals()
+{
+    return terminals;
+}
+
+QVector<Rule> CF_Grammar::GetRules()
+{
+    return rules;
 }
 
 //=============== Считывание грамматики из файла и создание объекта =====================================
 
-QString CF_Grammar::ReadFromFile(QString& inputString)
+QString CF_Grammar::ReadFromTXT(QString& inputString)
 {
     if (inputString.size() == 0){return "Ошибка: грамматика не найдена!";}
     QString current_string;
@@ -33,42 +64,75 @@ QString CF_Grammar::ReadFromFile(QString& inputString)
     while (inputText.readLineInto(&current_string))
     {
         strNum++;
-        if(current_string.indexOf("->") < 1){return QString("Ошибка: в строке " + QString::number(strNum) + " не найдены символы '->'!");}
-        // Добавить несколько правил, если они написаны через '|'
-        if (current_string.indexOf('|') != -1)
-        {
-            position = current_string.indexOf("->") + 2;
-            current_rule.left_part = current_string.sliced(0, position - 2);
-            sub_string = current_string.sliced(position);
+        if(current_string.indexOf("->") < 1){return QString("Ошибка: в строке " + QString::number(strNum) + " не найдена структура '[НЕТЕРМИНАЛ]->'!");}
+        if((current_string.contains("/*") && !current_string.contains("*/")) || (!current_string.contains("/*") && current_string.contains("*/")))
+        {return QString("Ошибка: в строке " + QString::number(strNum) + " недописана структура /*ТЕРМИНАЛ*/");}
 
-            while (true)
-            {
-                position = sub_string.indexOf('|');
-                if (position != -1)
+        QStringList list1 = current_string.split("->");
+        if(list1[1].size() == 0){return QString("Ошибка: в строке " + QString::number(strNum) + " отсутствует правая часть правила. Чтобы вставить пустое слово используйте [EPS]");}
+        current_rule.left_part = list1[0].trimmed();
+        QStringList list2 = list1[1].split('|');
+        for(int i = 0; i < list2.size(); i++)
+        {
+            sub_string = list2[i].trimmed();
+            if (list2[i].trimmed().contains("/*") && !list2[i].trimmed().contains("*/")){
+                for (int j = i; j < list2.size(); j++)
                 {
-                    current_string = current_rule.left_part + "->" + sub_string.sliced(0, position);
-                    sub_string = sub_string.sliced(position + 1);
-                    current_rule = GetRuleFromString(current_string);
-                    AddRule(current_rule);
-                }
-                else
-                {
-                    current_string = current_rule.left_part + "->" + sub_string;
-                    current_rule = GetRuleFromString(current_string);
-                    AddRule(current_rule);
-                    current_string.clear();
-                    break;
+                    if (list2[j].trimmed().contains("*/"))
+                    {
+                        for (int r = i + 1; r < j; r++)
+                            sub_string += '|' + list2[r].trimmed();
+                        sub_string += '|' + list2[j].trimmed();
+                        i = j;
+                        break;
+                    }
                 }
             }
-        }
-        else
-        {
+            current_string = current_rule.left_part + "->" + sub_string;
             current_rule = GetRuleFromString(current_string);
             AddRule(current_rule);
-            current_string.clear();
         }
     }
     AnalyzeNonTerminals();
+    return NULL;
+}
+
+QString CF_Grammar::ReadFromJSON(QJsonDocument& doc)
+{
+    QJsonObject object = doc.object();
+    QJsonArray array = object["non-terminals"].toArray();
+    starting_non_terminal = array[0].toString();
+    foreach (const QJsonValue& str, array)
+    {
+        non_terminals.insert(str.toString(), QList<Path>());
+    }
+    array = object["terminals"].toArray();
+    foreach (const QJsonValue& str, array)
+    {
+        terminals.insert(str.toString());
+    }
+    array = object["rules"].toArray();
+    foreach (const QJsonValue& obj, array)
+    {
+        Rule rule;
+        QString temp_str;
+        rule.left_part = obj[0].toString();
+        for (QChar& chr : obj[1].toString())
+        {
+            temp_str += chr;
+            if (non_terminals.contains(temp_str) || terminals.contains(temp_str))
+            {
+                if (terminals.contains(temp_str))
+                    rule.terminals_count++;
+                rule.right_part.push_back(temp_str);
+                temp_str.clear();
+            }
+        }
+        if (!temp_str.isEmpty()) return "Ошибка в чтении правила " + QString::number(rules.size() + 1) + ". Правая часть содержит символы, не являющиеся терминалом или нетерминалом.";
+        rule.complexity = obj[2].toInt();
+        rules.push_back(rule);
+    }
+    //AnalyzeNonTerminals();
     return NULL;
 }
 
@@ -91,6 +155,11 @@ Rule CF_Grammar::GetRuleFromString(const QString& String)
         {
             result.right_part.push_back(current_string.sliced(i_char, current_string.sliced(i_char).indexOf(']') + 1));
             i_char += current_string.sliced(i_char).indexOf(']');
+        }
+        else if (current_string[i_char] == '/' && i_char != current_string.length() - 1 && current_string[i_char + 1] == '*')
+        {
+            result.right_part.push_back(current_string.sliced(i_char, current_string.sliced(i_char).indexOf("*/") + 2));
+            i_char += current_string.sliced(i_char).indexOf("*/") + 1;
         }
         else
             result.right_part.push_back(current_string.sliced(i_char, 1));
@@ -845,7 +914,17 @@ QVector<QString> CF_Grammar::GenerateMultipleWords(const int& Amount, const int&
             {
                 temp_str.clear();
                 for (QString& i_string : i_path.word)
-                    temp_str += i_string;
+                {
+                    if(i_string.contains("/*") && i_string.contains("*/"))
+                    {
+                        QString temp = i_string;
+                        temp.remove(0,2);
+                        temp.chop(2);
+                        temp_str += temp;
+                    }
+                    else
+                        temp_str += i_string;
+                }
                 if (temp_str == "[EPS]")
                     temp_str = "";
                 if (!words.contains(temp_str))
@@ -888,7 +967,6 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
     int j = 0;
     QString temp_str;
     QString word = Word;
-    //QVector<Rule> temp_rules;
 
     if (word.size() == 0)
         word = "[EPS]";
@@ -907,14 +985,6 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
         for(int j = 0; j < 2 * word.size() + 1; j++)
             a[key][j].resize(2 * word.size() + 1);
     }
-    //QVector<QVector<QVector<bool>>> a;
-    // a.resize(non_terminals.size() + terminals.size());
-    // for (int i = 0; i < non_terminals.size() + terminals.size(); i++)
-    // {
-    //     a[i].resize(2 * word.size());
-    //     for (int j = 0; j < 2 * word.size(); j++)
-    //         a[i][j].resize(2 * word.size());
-    // }
 
     for (Rule& i_rule : rules)
     {
@@ -932,23 +1002,9 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
                 h[key][j][k].resize(max_right_part_length + 1);
         }
     }
-    // QVector<QVector<QVector<QVector<bool>>>> h;
-    // h.resize(rules.size());
-    // for (int i = 0; i < rules.size(); i++)
-    // {
-    //     h[i].resize(2 * word.size());
-    //     for (int j = 0; j < 2 * word.size(); j++)
-    //     {
-    //         h[i][j].resize(2 * word.size());
-    //         for (int k = 0; k < 2 * word.size(); k++)
-    //             h[i][j][k].resize(max_right_part_length + 1);
-    //     }
-    // }
-    //qDebug() << "word = " << word;
 
     for (int i = 0; i <= word.size(); i++)
     {
-        //qDebug() << "i = " + QString::number(i);
         // Выводимость из нетерминалов
         for (j = i + 1; j <= word.size() + 1; j++)
         {
@@ -962,40 +1018,32 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
                 }
             for (auto [key, value] : non_terminals.asKeyValueRange())
             {
-                //index_of_non_terminal = IndexOfNonTerminal(key);
                 for (Path& i_path : non_terminals[key])
                 {
                     if (i_path.word.size() == 0)
                     {
                         a[key][i][i] = true;
-                        //a[index_of_non_terminal][i][i] = true;
                     }
                     if (VectorToString(i_path.word) == temp_str)
                     {
                         a[key][i][j] = true;
-                        //a[index_of_non_terminal][i][j] = true;
                         break;
                     }
                 }
             }
         }
-        //if (a[IndexOfNonTerminal(starting_non_terminal)][0][Word.size()]) return true;
         if (a[starting_non_terminal][0][Word.size()]) return true;
         // Выводимость терминалов
         for (const QString& i_string : terminals)
         {
-            //index_of_non_terminal = IndexOfNonTerminal(i_string);
             if (i < word.size() && word[i] == i_string[0] && i_string != "[EPS]")
                 a[i_string][i][i + 1] = true;
-                //a[index_of_non_terminal][i][i + 1] = true;
         }
         for (Rule& i_rule : rules)
         {
             h[i_rule][i][i][0] = true;
-            //h[IndexOfRule(i_rule)][i][i][0] = true;
         }
     }
-    //qDebug() << "initialized";
     for (int m = 0; m < word.size(); m++)
     {
         for (int i = 0; i < word.size(); i++)
@@ -1005,30 +1053,23 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
             {
                 for (Rule& i_rule : rules)
                 {
-                    //index_of_rule = IndexOfRule(i_rule);
                     for (int k = 1; k <= i_rule.right_part.size(); k++)
                     {
-                        //index_of_non_terminal = IndexOfNonTerminal(i_rule.right_part[k - 1]);
                         for (int r = i; r <= j + 1; r++)
                         {
                             if (h[i_rule][i][j + 1][k] == true) break;
-                            //if (h[index_of_rule][i][j + 1][k] == true) break;
                             h[i_rule][i][j + 1][k] = (h[i_rule][i][r][k - 1] * a[i_rule.right_part[k - 1]][r][j + 1]);
-                            //h[index_of_rule][i][j + 1][k] = (h[index_of_rule][i][r][k - 1] * a[index_of_non_terminal][r][j + 1]);
                             if (!h[i_rule][i][j + 1][k])
-                            //if (!h[index_of_rule][i][j + 1][k])
                             {
                                 temp_bool = true;
                                 for (int v = 0; v < k - 1; v++)
                                 {
                                     temp_bool &= a[i_rule.right_part[v]][0][0];
-                                    //temp_bool &= a[IndexOfNonTerminal(i_rule.right_part[v])][0][0];
                                     if (!temp_bool) break;
                                 }
                                 if (temp_bool)
                                 {
                                     h[i_rule][i][j + 1][k] = h[i_rule][i][j + 1][k] + a[i_rule.right_part[k - 1]][i][j + 1];
-                                    //h[index_of_rule][i][j + 1][k] = h[index_of_rule][i][j + 1][k] + a[index_of_non_terminal][i][j + 1];
                                 }
                             }
                         }
@@ -1037,26 +1078,14 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
                     {
                         a[i_rule.left_part][i][j + 1] = true;
                     }
-                    // if (h[index_of_rule][i][j + 1][i_rule.right_part.size()] == true)
-                    // {
-                    //     a[IndexOfNonTerminal(i_rule.left_part)][i][j + 1] = true;
-                    // }
                 }
             }
         }
     }
 
     result = a[starting_non_terminal][0][Word.size()];
-    //result = a[IndexOfNonTerminal(starting_non_terminal)][0][Word.size()];
-    qDebug() << "word = " + word + ", result = " + QString::number(result);
+    //qDebug() << "word = " + word + ", result = " + QString::number(result);
     return result;
-}
-
-int CF_Grammar::IndexOfNonTerminal(const QString& Non_Terminal)
-{
-    int index = (int)std::distance(non_terminals.begin(), non_terminals.find(Non_Terminal));
-    if (index != non_terminals.size()) return index;
-    return (int)std::distance(terminals.begin(), terminals.find(Non_Terminal)) + (int)non_terminals.size();
 }
 
 int CF_Grammar::IndexOfRule(const Rule& Current_Rule)
@@ -1119,6 +1148,8 @@ bool Rule::operator<(const Rule& Object) const
 Rule::Rule()
 {
     terminals_count = 0;
+    complexity = 0;
+    right_part = QVector<QString>();
 }
 
 Rule::Rule(QString Left_Part, QVector<QString> Right_Part)
@@ -1134,6 +1165,8 @@ Rule::Rule(QString Left_Part, QVector<QString> Right_Part)
 Rule::~Rule()
 {
     terminals_count = 0;
+    complexity = 0;
+    left_part.clear();
     right_part.clear();
 }
 
@@ -1246,7 +1279,17 @@ QVector<QString> ApplyRule(const QVector<QString>& String, const Rule& Rule, con
     for (const QString& i_string : Rule.right_part)
     {
         if (i_string != "[EPS]")
-            replace_string.push_back(i_string);
+        {
+            if(i_string.contains("/*") && i_string.contains("*/"))
+            {
+                QString temp = i_string;
+                temp.remove(0,2);
+                temp.chop(2);
+                replace_string.push_back(temp);
+            }
+            else
+                replace_string.push_back(i_string);
+        }
     }
 
     // Вставка строки-замены на место нетерминала

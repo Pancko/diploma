@@ -1,0 +1,2 @@
+S->aboba|abA|[EPS]
+A->a|b|[EPS]

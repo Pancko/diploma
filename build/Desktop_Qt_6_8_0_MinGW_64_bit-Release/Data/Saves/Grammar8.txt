@@ -1,0 +1,11 @@
+S->AA|a|TT
+A->BB|a
+B->CC|a
+C->DD|a
+D->EE|a
+E->a
+T->RR
+R->VV
+V->KK
+K->LL
+L->b
