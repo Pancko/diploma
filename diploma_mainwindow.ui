@@ -14,8 +14,8 @@
    <string>Diploma_MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+   <layout class="QVBoxLayout" name="verticalLayout_8">
+    <item>
      <widget class="QStackedWidget" name="stackedWidget">
       <property name="lineWidth">
        <number>1</number>
@@ -108,6 +108,55 @@
            </size>
           </property>
          </spacer>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="infiniteTask_page">
+       <layout class="QVBoxLayout" name="verticalLayout_9">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_10">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="text">
+             <string>Язык:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="language_lineEdit"/>
+          </item>
+          <item>
+           <widget class="QPushButton" name="langGenerate_pB">
+            <property name="text">
+             <string>Сгенерировать язык</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_8">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>∑ = {</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="sigma_lineEdit"/>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>}</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QTextEdit" name="langCFG_textEdit"/>
         </item>
        </layout>
       </widget>

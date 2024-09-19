@@ -2,11 +2,17 @@
 #include "./ui_diploma_mainwindow.h"
 #include <QIntValidator>
 #include <QThread>
+#include <QFileDialog>
+#include <QFile>
+#include <QFileInfo>
+#include <QJsonArray>
+#include <QJsonObject>
 
 Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Diploma_MainWindow)
 {
+    languageCFG = new CF_Grammar();
     ui->setupUi(this);
     ui->stackedWidget->setCurrentWidget(ui->mainMenu_page);
 
@@ -16,6 +22,12 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     ui->wordCount_lineEdit->setText(ui->wordCount_lineEdit->placeholderText());
     ui->length_lineEdit->setInputMask("09");
     ui->wordCount_lineEdit->setInputMask("09");
+
+    ui->sigma_lineEdit->setPlaceholderText("a,b,c");
+    ui->sigma_lineEdit->setText(ui->sigma_lineEdit->placeholderText());
+    QRegularExpression rx("([a-z],)*|[a-z]");
+    QValidator *validator = new QRegularExpressionValidator(rx, this);
+    ui->sigma_lineEdit->setValidator(validator);
 }
 
 Diploma_MainWindow::~Diploma_MainWindow()
@@ -40,7 +52,7 @@ void Diploma_MainWindow::on_PremadeTasks_pB_clicked()
 
 void Diploma_MainWindow::on_InfiniteTasks_pB_clicked()
 {
-
+    ui->stackedWidget->setCurrentWidget(ui->infiniteTask_page);
 }
 
 
@@ -67,12 +79,12 @@ void Diploma_MainWindow::on_Compare_pB_clicked()
     connect(CF_AnalyzerThread, SIGNAL(finished()), CF_AnalyzerThread, SLOT(deleteLater()));
 
 
-    error = grammar1.ReadFromFile(str1);
+    error = grammar1.ReadFromTXT(str1);
     if (error.size() > 0){
         ui->output_textEdit->append("Грамматика 1. " + error);
         errorFound = true;
     }
-    error = grammar2.ReadFromFile(str2);
+    error = grammar2.ReadFromTXT(str2);
     if (error.size() > 0){
         ui->output_textEdit->append("Грамматика 2. " + error);
         errorFound = true;
@@ -90,36 +102,114 @@ void Diploma_MainWindow::on_Compare_pB_clicked()
 
 void Diploma_MainWindow::on_CF1Load_pB_clicked()
 {
+    ui->grammar1_textEdit->clear();
     ui->grammar1_textEdit->insertPlainText(load());
 }
 
 
 void Diploma_MainWindow::on_CF2Load_pB_clicked()
 {
+    ui->grammar2_textEdit->clear();
     ui->grammar2_textEdit->insertPlainText(load());
 }
 
 
 void Diploma_MainWindow::on_CF1Save_pB_clicked()
 {
-
+    save(ui->grammar1_textEdit->toPlainText());
 }
 
 
 void Diploma_MainWindow::on_CF2Save_pB_clicked()
 {
-
+    save(ui->grammar2_textEdit->toPlainText());
 }
 
 void Diploma_MainWindow::save(const QString& text)
 {
-
+    QString fileName = QFileDialog::getSaveFileName(this, "Сохранить файл", QDir::currentPath() + "/Data/Saves", "JSON(*.json);;TXT(*.txt)");
+    QFile file(fileName);
+    file.open(QIODeviceBase::WriteOnly);
+    if(QFileInfo(fileName).suffix() == "txt")
+    {
+        QTextStream out(&file);
+        out << text;
+    }
+    else if (QFileInfo(fileName).suffix() == "json")
+    {
+        CF_Grammar gr;
+        QString str = text;
+        QJsonDocument doc;
+        QJsonArray array;
+        QJsonObject obj;
+        gr.ReadFromTXT(str);
+        array.append(gr.GetStartingNT());
+        QMap<QString, QVector<Path>> non_terms = gr.GetNonTerminals();
+        QSet<QString> terms = gr.GetTerminals();
+        QVector<Rule> rules = gr.GetRules();
+        for (auto [key, value] : non_terms.asKeyValueRange())
+        {
+            if(!array.contains(key)) array.append(key);
+        }
+        obj.insert("non-terminals", array);
+        while(array.count()) {
+            array.pop_back();
+        }
+        for (const QString& str : terms)
+        {
+            array.append(str);
+        }
+        obj.insert("terminals", array);
+        while(array.count()) {
+            array.pop_back();
+        }
+        for (Rule& rule : rules)
+        {
+            QString temp_str;
+            QJsonArray temp_array;
+            for (QString& str : rule.right_part)
+                temp_str += str;
+            temp_array.append(rule.left_part);
+            temp_array.append(temp_str);
+            temp_array.append(rule.complexity);
+            array.append(temp_array);
+        }
+        obj.insert("rules", array);
+        doc.setObject(obj);
+        file.write(doc.toJson());
+    }
+    file.close();
 }
 
 
 QString Diploma_MainWindow::load()
 {
     QString result;
+    QString directory = QFileDialog::getOpenFileName(this, "Выбрать файл", QDir::currentPath() + "/Data/Saves", "(*.txt *.json)");
+
+    if (!directory.isEmpty())
+    {
+        QFile file = QFile(directory);
+        file.open(QIODevice::ReadOnly);
+        if(QFileInfo(directory).suffix() == "txt"){
+            result = QByteArray(file.readAll());
+        }
+        else if (QFileInfo(directory).suffix() == "json"){
+            QString temp_str;
+            QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+            QJsonArray rules = doc["rules"].toArray();
+            for(QJsonValueRef obj : rules)
+            {
+                if (temp_str != obj[0].toString()){
+                    temp_str = obj[0].toString();
+                    if (result.isEmpty()) result += temp_str + " -> " + obj[1].toString();
+                    else result += "\n" + temp_str + " -> " + obj[1].toString();
+                }
+                else { result += " | " + obj[1].toString(); }
+            }
+        }
+        file.close();
+    }
     return result;
 }
 
@@ -187,3 +277,32 @@ void CF_Analyzer::writeOutput()
     outputTextEdit->append(output);
     outputTextEdit->append("=========================\n");
 }
+
+void Diploma_MainWindow::on_langGenerate_pB_clicked()
+{
+    QString err;
+    if (languageCFG->GetTerminals().isEmpty())
+    {
+        QFile file = QFile(QDir::currentPath() + "/Data/Resources/LangGr.json");
+        file.open(QIODevice::ReadOnly);
+        QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
+        err = languageCFG->ReadFromJSON(doc);
+        QStringList sigma = ui->sigma_lineEdit->text().split(',', Qt::SkipEmptyParts);
+        foreach(QString str, sigma)
+        {
+            Rule rule("∑", QList<QString>({str}));
+            languageCFG->AddRule(rule);
+        }
+        for(int i = 2; i < 6 ;i++)
+            languageCFG->AddRule(Rule("N", QList<QString>({QString::number(i)})));
+        languageCFG->AnalyzeNonTerminals();
+        file.close();
+    }
+    if(err.isEmpty()){
+        ui->langCFG_textEdit->setText(languageCFG->PrintGrammar());
+        ui->language_lineEdit->setText(languageCFG->GenerateWord(30));
+    }
+    else
+        ui->language_lineEdit->setText(err);
+}
+

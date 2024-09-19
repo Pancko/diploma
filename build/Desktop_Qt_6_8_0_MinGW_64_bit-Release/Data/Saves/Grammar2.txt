@@ -1,0 +1,6 @@
+[S']->[EPS]|[Aa]S|a|SS|b|[Aa][Ab]|[AbS][Aa]|[Ab][Aa]|[AaS]S|S[Ab]
+S->[Aa]S|a|SS|b|[Aa][Ab]|[AbS][Aa]|[Ab][Aa]|[AaS]S|S[Ab]
+[AbS]->[Ab]S
+[AaS]->[Aa]S
+[Aa]->a
+[Ab]->b

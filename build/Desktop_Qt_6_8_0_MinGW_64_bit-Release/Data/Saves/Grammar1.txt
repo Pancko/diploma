@@ -1,0 +1,8 @@
+S->GE|aB|BB|FaD
+A->C|[EPS]|BS|ab|bA
+B->SS|EG|b|D
+C->AF|CaF|bCS
+D->aE|ab|bSa
+E->[EPS]|EEE|BC|bFa
+F->CC|AaF|FEF
+G->EE|aBB|Sb

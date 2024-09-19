@@ -48,8 +48,12 @@ private slots:
 
     void on_wordCount_lineEdit_textChanged(const QString &arg1);
 
+    void on_langGenerate_pB_clicked();
+
 private:
     Ui::Diploma_MainWindow *ui;
+
+    CF_Grammar* languageCFG;
 
     int wordLength;
     int wordCount;

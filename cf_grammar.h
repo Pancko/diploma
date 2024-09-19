@@ -9,13 +9,15 @@
 #include <QTextStream>
 #include <QSet>
 #include <QMap>
+#include <QJsonDocument>
 
 // Правило из КС-грамматики
 struct Rule
 {
-    QString left_part;					// Левая часть правила
+    QString left_part;				// Левая часть правила
     QVector<QString> right_part;	// Правая часть правила
-    size_t terminals_count = 0;				// Счетчик терминалов
+    size_t terminals_count = 0;		// Счетчик терминалов
+    int complexity = 0;             //Сложность правила для генерации
 
     bool operator==(const Rule& Object) const;
     bool operator!=(const Rule& Object) const;
@@ -30,10 +32,10 @@ struct Rule
 // Путь из нетерминала до определенного слова
 struct Path
 {
-    int length;											// Длина пути
-    QVector<Rule> path_rules;						// Правила
+    int length;								// Длина пути
+    QVector<Rule> path_rules;				// Правила
     QVector<QVector<QString>> path_words;	// Последовательность слов
-    QVector<QString> word;						// Конечное слово
+    QVector<QString> word;					// Конечное слово
 
     bool operator==(const Path& Object) const;
     bool operator+=(const Path& Object);
@@ -59,7 +61,7 @@ class CF_Grammar
 {
 private:
     QString starting_non_terminal;					// S
-    QMap<QString, QVector<Path>> non_terminals;    // N
+    QMap<QString, QVector<Path>> non_terminals;     // N
     QMap<QString, Path> shortest_path;				// Кратчайшие пути для нетерминалов
     QSet<QString> bad_non_terminals;				// "Плохие" нетерминалы
     QSet<QString> terminals;						// Sigma
@@ -71,9 +73,15 @@ public:
     CF_Grammar();
     ~CF_Grammar();
 
+    // Получить поля
+    QString GetStartingNT();
+    QMap<QString, QVector<Path>> GetNonTerminals();
+    QSet<QString> GetTerminals();
+    QVector<Rule> GetRules();
 
     // Считывание грамматики из файла
-    QString ReadFromFile(QString& inputString);
+    QString ReadFromTXT(QString& inputString);
+    QString ReadFromJSON(QJsonDocument& doc);
     // Получение правила из строки
     Rule GetRuleFromString(const QString& String);
     // Добавление правила в грамматику
@@ -128,8 +136,6 @@ public:
 
 
     // Вспомогательные функции для алгоритмов:
-    // Номер нетерминала либо терминала
-    int IndexOfNonTerminal(const QString& Non_Terminal);
     // Номер правила
     int IndexOfRule(const Rule& Current_Rule);
     // Приведение вектора строк к строке
