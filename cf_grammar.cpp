@@ -130,7 +130,7 @@ QString CF_Grammar::ReadFromJSON(QJsonDocument& doc)
         }
         if (!temp_str.isEmpty()) return "Ошибка в чтении правила " + QString::number(rules.size() + 1) + ". Правая часть содержит символы, не являющиеся терминалом или нетерминалом.";
         rule.complexity = obj[2].toInt();
-        rules.push_back(rule);
+        AddRule(rule);
     }
     //AnalyzeNonTerminals();
     return NULL;
@@ -235,7 +235,7 @@ void CF_Grammar::GenerateBasicPathes()
         if (!GotNonTerminal(i_rule.right_part)) // Если правило порождает нетерминальное слово
         {
             if (!new_found_pathes.contains(i_rule.left_part))
-                new_found_pathes.insert(i_rule.left_part, QVector<Path>()); // emplace
+                new_found_pathes.insert(i_rule.left_part, QVector<Path>());
             if (i_rule.right_part[0] == "[EPS]")
                 current_path.length = 0;
             else
@@ -251,7 +251,7 @@ void CF_Grammar::GenerateBasicPathes()
             pathes_amount++;
 
             new_found_pathes[i_rule.left_part].push_back(current_path);
-            analyzed_non_terminlas.insert(i_rule.left_part); // emplace
+            analyzed_non_terminlas.insert(i_rule.left_part);
 
             current_path.path_rules.clear();
             current_path.path_words.clear();
@@ -779,7 +779,7 @@ QString CF_Grammar::PrintGrammar(bool IsDebug, bool ShowPath)
 
 //=============== Генерация рандомных слов и взаимодействие со словами ===================================
 
-QString CF_Grammar::GenerateWord(const int& Max_Length)
+QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
 {
     QString result;
     QVector<QString> word;
@@ -788,6 +788,7 @@ QString CF_Grammar::GenerateWord(const int& Max_Length)
     Path current_word_path;
     int rule_to_use = 0;
     int temp_int = 0;
+    int difficulty = 0;
     size_t expected_length = 0;
     size_t actual_length = 0;
     bool non_terminal_found = 0;
@@ -811,6 +812,7 @@ QString CF_Grammar::GenerateWord(const int& Max_Length)
     {
         // Рандомный выбор номера правила
         rule_to_use = rand() % appliable_rules.size();
+        difficulty += appliable_rules[rule_to_use].complexity;
 
         // Применение правила
         word = ApplyRule(word, appliable_rules[rule_to_use]);
@@ -889,10 +891,10 @@ QString CF_Grammar::GenerateWord(const int& Max_Length)
         words.insert(result);
     }
 
-    return result;
+    return QPair<QString, int>(result, difficulty);
 }
 
-QVector<QString> CF_Grammar::GenerateMultipleWords(const int& Amount, const int& Max_Length)
+QVector<QString> CF_Grammar::GenerateMultipleWords(int Amount, int Max_Length)
 {
     QVector<QString> result;
     int iterations = 0;
@@ -902,7 +904,7 @@ QVector<QString> CF_Grammar::GenerateMultipleWords(const int& Amount, const int&
     while (words.size() < Amount)
     {
         words_size = (int)words.size();
-        temp_str = GenerateWord(Max_Length);
+        temp_str = GenerateWord(Max_Length).first;
         result.push_back(temp_str);
 
         if (words_size == words.size()) iterations++;
@@ -1152,7 +1154,7 @@ Rule::Rule()
     right_part = QVector<QString>();
 }
 
-Rule::Rule(QString Left_Part, QVector<QString> Right_Part)
+Rule::Rule(QString Left_Part, QVector<QString> Right_Part, int Complexity)
 {
     left_part = Left_Part;
     terminals_count = Right_Part.size();
@@ -1160,6 +1162,7 @@ Rule::Rule(QString Left_Part, QVector<QString> Right_Part)
     {
         right_part.push_back(i_string);
     }
+    complexity = Complexity;
 }
 
 Rule::~Rule()
@@ -1203,7 +1206,7 @@ bool Path::operator+=(const Path& Object)
     return true;
 }
 
-Path Path::ApplyPath(const Path& Object, const int& position)
+Path Path::ApplyPath(const Path& Object, int position)
 {
     Path new_path;
     int pos = 0;
@@ -1265,7 +1268,7 @@ Path::~Path()
 }
 
 //=============== Применение правила к слову ===============================================================
-QVector<QString> ApplyRule(const QVector<QString>& String, const Rule& Rule, const int& Non_Terminal_Number)
+QVector<QString> ApplyRule(const QVector<QString>& String, const Rule& Rule, int Non_Terminal_Number)
 {
     QVector<QString> result = String;
     QVector<QString> replace_string;

@@ -1,0 +1,9 @@
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/DiplomaQt.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/edit_cache.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/rebuild_cache.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/list_install_components.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/install.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/install/local.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/install/strip.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/DiplomaQt_autogen_timestamp_deps.dir
+F:/Qt_projs/DiplomaQt/build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/DiplomaQt_autogen.dir

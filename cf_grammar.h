@@ -17,7 +17,7 @@ struct Rule
     QString left_part;				// Левая часть правила
     QVector<QString> right_part;	// Правая часть правила
     size_t terminals_count = 0;		// Счетчик терминалов
-    int complexity = 0;             //Сложность правила для генерации
+    int complexity = 0;             // Сложность правила для генерации
 
     bool operator==(const Rule& Object) const;
     bool operator!=(const Rule& Object) const;
@@ -25,7 +25,7 @@ struct Rule
     bool operator<(const Rule& Object) const;
 
     Rule();
-    Rule(QString Left_Part, QVector<QString> Right_Part);
+    Rule(QString Left_Part, QVector<QString> Right_Part, int Complexity = 0);
     ~Rule();
 };
 
@@ -39,7 +39,7 @@ struct Path
 
     bool operator==(const Path& Object) const;
     bool operator+=(const Path& Object);
-    Path ApplyPath(const Path& Object, const int& position = 0);
+    Path ApplyPath(const Path& Object, int position = 0);
 
     QString PrintPath(bool IsDebug = false);
 
@@ -121,9 +121,9 @@ public:
 
 
     // Генерация случайного терминального слова
-    QString GenerateWord(const int& Max_Length);
+    QPair<QString, int> GenerateWord(int Max_Length);
     // Генерация нескольких случайных терминальных слов с заданной максимальной длиной
-    QVector<QString> GenerateMultipleWords(const int& Amount, const int& Max_Length);
+    QVector<QString> GenerateMultipleWords(int Amount, int Max_Length);
 
     // Печать сгенерированных слов
     void PrintWords(bool IsDebug = false);
@@ -145,7 +145,7 @@ public:
 };
 
 // Применение правила к слову
-QVector<QString> ApplyRule(const QVector<QString>& String, const Rule& Rule, const int& Non_Terminal_Number = 0);
+QVector<QString> ApplyRule(const QVector<QString>& String, const Rule& Rule, int Non_Terminal_Number = 0);
 // Совмещение двух наборов правил
 QMap<QString, QVector<Path>> PathConvergence(const QMap<QString, QVector<Path>>& First_Object, const QMap<QString, QVector<Path>>& Second_Object);
 // Содержится ли строка в векторе
