@@ -290,19 +290,22 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         QStringList sigma = ui->sigma_lineEdit->text().split(',', Qt::SkipEmptyParts);
         foreach(QString str, sigma)
         {
-            Rule rule("∑", QList<QString>({str}));
-            languageCFG->AddRule(rule);
+            languageCFG->AddRule(Rule("∑", QList<QString>({str}), 1));
         }
         for(int i = 2; i < 6 ;i++)
-            languageCFG->AddRule(Rule("N", QList<QString>({QString::number(i)})));
+            languageCFG->AddRule(Rule("N", QList<QString>({QString::number(i)}), 1));
         languageCFG->AnalyzeNonTerminals();
         file.close();
     }
     if(err.isEmpty()){
-        ui->langCFG_textEdit->setText(languageCFG->PrintGrammar());
-        ui->language_lineEdit->setText(languageCFG->GenerateWord(30));
+        int difficulty = ui->langDifficulty_spinBox->value();
+        QPair<QString, int> language = languageCFG->GenerateWord(difficulty * 10);
+        while((language.second < (difficulty - 1) * 10) || (language.second > difficulty * 10))
+            language = languageCFG->GenerateWord(difficulty * 10);
+        ui->langCFG_textEdit->setText(languageCFG->PrintGrammar(1,1));
+        ui->language_Label->setText("Язык: " + language.first);
     }
     else
-        ui->language_lineEdit->setText(err);
+        ui->language_Label->setText("Язык: " + err);
 }
 
