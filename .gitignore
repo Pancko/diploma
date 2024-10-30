@@ -73,11 +73,22 @@ CMakeLists.txt.user*
 *.exe
 
 build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.cmake/
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.qt/
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.qtc/package-manager/conan.cmake
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.qtc/package-manager/conan_provider.cmake
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.qtc/package-manager/LICENSE.conan
 build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.qtc_clangd/
 build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/DiplomaQt_autogen.dir/
 build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/DiplomaQt_autogen/deps
-build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/Testing/Temporary/LatestLog.log
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/Testing/
 build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/build.ninja
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Debug/
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/*.*
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/3.29.3/CMakeDetermineCompilerABI_CXX.bin
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/*.*
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/DiplomaQt_autogen/moc_predefs.h
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/DiplomaQt_autogen/EWIEGA46WW
 
+*.ninja
 *.ninja_deps
 *.ninja_log
