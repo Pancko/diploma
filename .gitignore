@@ -72,3 +72,12 @@ CMakeLists.txt.user*
 *.dll
 *.exe
 
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.cmake/
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/.qtc_clangd/
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/CMakeFiles/DiplomaQt_autogen.dir/
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/DiplomaQt_autogen/deps
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/Testing/Temporary/LatestLog.log
+build/Desktop_Qt_6_8_0_MinGW_64_bit-Release/build.ninja
+
+*.ninja_deps
+*.ninja_log

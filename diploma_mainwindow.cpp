@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
+#include "regExPlus.h"
 
 Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -281,13 +282,13 @@ void CF_Analyzer::writeOutput()
 void Diploma_MainWindow::on_langGenerate_pB_clicked()
 {
     QString err;
+    QStringList sigma = ui->sigma_lineEdit->text().split(',', Qt::SkipEmptyParts);
     if (languageCFG->GetTerminals().isEmpty())
     {
         QFile file = QFile(QDir::currentPath() + "/Data/Resources/LangGr.json");
         file.open(QIODevice::ReadOnly);
         QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
         err = languageCFG->ReadFromJSON(doc);
-        QStringList sigma = ui->sigma_lineEdit->text().split(',', Qt::SkipEmptyParts);
         foreach(QString str, sigma)
         {
             languageCFG->AddRule(Rule("∑", QList<QString>({str}), 1));
@@ -302,10 +303,92 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         QPair<QString, int> language = languageCFG->GenerateWord(difficulty * 10);
         while((language.second < (difficulty - 1) * 10) || (language.second > difficulty * 10))
             language = languageCFG->GenerateWord(difficulty * 10);
+        qDebug() << language.first;
+        QString temp;
+        while(temp != language.first)
+        {
+            temp = language.first;
+            language.first = reduce(&language.first, &sigma);
+        }
+        qDebug() << language.first << Qt::endl;
         ui->langCFG_textEdit->setText(languageCFG->PrintGrammar(1,1));
         ui->language_Label->setText("Язык: " + language.first);
     }
     else
         ui->language_Label->setText("Язык: " + err);
+}
+
+QString Diploma_MainWindow::reduce(const QString *lang, const QStringList *sigma)
+{
+    QString ch;
+    QString language = *lang;
+    QString result = "L = {w ∈ ∑<sup>*</sup> : ";
+    QVector<Letter> block;
+    for(int i = result.size(); i < language.size(); i++)
+    {
+        ch = language[i];
+
+        if (sigma->contains(ch) && language[i + 1] != '}') // нашли символ из алфавита (начало блока)
+        {
+            int pos = i;
+            while(true) // читаем очередной блок одинаковых букв
+            {
+                if(language[pos] != ch) break;
+                if(language[pos + 1] == '<'){
+                    QString temp = language.mid(pos, language.indexOf("</sup>", pos) - pos + 6);
+                    block.push_back(Letter(temp));
+                    pos = language.indexOf("</sup>", pos) + 6;
+                }
+                else {
+                    block.push_back(Letter(ch));
+                    pos++;
+                }
+            }
+            i = pos - 1;
+            if(block.size() == 1) {
+                result += ch;
+                if(block[0].havePow)
+                {
+                    result += "<sup>";
+                    if (block[0].isIntPow)
+                        result += QString::number(block[0].intPow);
+                    else
+                        result += block[0].chPow;
+                    result += "</sup>";
+                }
+            }
+            else
+            {
+                for (int j = 1; j < block.size(); j ++)
+                {
+                    j = combineInBlock(block, j);
+                }
+                for (Letter &l: block)
+                {
+                    if (!l.havePow)
+                        result += l.value;
+                    else
+                    {
+                        if (l.isIntPow)
+                            result += l.value + "<sup>" + QString::number(l.intPow) + "</sup>";
+                        else
+                            result += l.value + "<sup>" + l.chPow + "</sup>";
+                    }
+                }
+            }
+            block.clear();
+        }
+        else result += ch;
+    }
+    return result;
+}
+
+
+void Diploma_MainWindow::on_sigma_lineEdit_textChanged(const QString &arg1)
+{
+    QChar newCh = arg1.back();
+    QString newStr = arg1.chopped(1);
+    if (newCh.isLetter() && newStr.contains(newCh))
+        ui->sigma_lineEdit->setText(newStr);
 }
 

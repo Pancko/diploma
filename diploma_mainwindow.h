@@ -21,6 +21,9 @@ public:
     ~Diploma_MainWindow();
 
 private slots:
+    void save(const QString& text);
+    QString load();
+
     void on_Library_pB_clicked();
 
     void on_GrammarEQ_pB_clicked();
@@ -39,9 +42,6 @@ private slots:
 
     void on_CF2Save_pB_clicked();
 
-    void save(const QString& text);
-    QString load();
-
     void on_clearOutput_pB_clicked();
 
     void on_length_lineEdit_textChanged(const QString &arg1);
@@ -50,6 +50,8 @@ private slots:
 
     void on_langGenerate_pB_clicked();
 
+    void on_sigma_lineEdit_textChanged(const QString &arg1);
+
 private:
     Ui::Diploma_MainWindow *ui;
 
@@ -57,6 +59,8 @@ private:
 
     int wordLength;
     int wordCount;
+
+    QString reduce(const QString *language, const QStringList *sigma);
 };
 
 class CF_Analyzer: public QObject {
@@ -89,4 +93,5 @@ signals:
     /// Something happened to a child (Unix only).
     void stateChanged(int ospid);
 };
+
 #endif // DIPLOMA_MAINWINDOW_H
