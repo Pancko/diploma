@@ -2,9 +2,7 @@
 #define DIPLOMA_MAINWINDOW_H
 
 #include <QMainWindow>
-#include "cf_grammar.h"
-#include <QMutex>
-#include <QTextEdit>
+#include "automata.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -55,43 +53,13 @@ private slots:
 private:
     Ui::Diploma_MainWindow *ui;
 
+    Automata automata;
     CF_Grammar* languageCFG;
+    CF_Grammar* generatedCFG;
 
     int wordLength;
     int wordCount;
 
-    QString reduce(const QString *language, const QStringList *sigma);
-};
-
-class CF_Analyzer: public QObject {
-    Q_OBJECT
-private:
-    QMutex mutex;
-    bool stopped;
-    bool isStopped();
-
-    CF_Grammar grammar1;
-    CF_Grammar grammar2;
-    int wordLength;
-    int wordCount;
-    QTextEdit* outputTextEdit;
-public:
-    QString output;
-    void setLocals(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, int Words_Lenght, int Words_Count, QTextEdit* tE);
-    CF_Analyzer();
-public slots:
-    /// This is the method which runs in the thread.
-    void compare();
-    /// Sets the stop flag.
-    void stop();
-    void writeOutput();
-signals:
-    /// A child process exited normally.
-    void exited();
-    /// A child process crashed (Unix only).
-    void signalled(int ospid, int signal);
-    /// Something happened to a child (Unix only).
-    void stateChanged(int ospid);
 };
 
 #endif // DIPLOMA_MAINWINDOW_H

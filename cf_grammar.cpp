@@ -19,12 +19,53 @@ CF_Grammar::CF_Grammar()
 
 CF_Grammar::~CF_Grammar()
 {
+    clear();
+}
+
+void CF_Grammar::clear()
+{
+    starting_non_terminal.clear();
+    starting_non_terminal.squeeze();
+
+    for (QVector<Path>& v : non_terminals)
+    {
+        for (Path& i_path : v)
+            i_path.clear();
+        v.clear();
+        v.squeeze();
+    }
+    for(QString& s : non_terminals.keys())
+    {
+        s.clear();
+        s.squeeze();
+    }
     non_terminals.clear();
-    terminals.clear();
-    rules.clear();
+
+    for (Path& p : shortest_path)
+        p.clear();
+    for(QString& s : shortest_path.keys())
+    {
+        s.clear();
+        s.squeeze();
+    }
     shortest_path.clear();
+
+
     bad_non_terminals.clear();
+    bad_non_terminals.squeeze();
+
+    terminals.clear();
+    terminals.squeeze();
+
+    for (Rule& r : rules)
+        r.clear();
+    rules.clear();
+    rules.squeeze();
+
+    pathes_amount = 0;
+
     words.clear();
+    words.squeeze();
 }
 
 //=============== Получить поля грамматики ==============================================================
@@ -788,7 +829,7 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     Path current_word_path;
     int rule_to_use = 0;
     int temp_int = 0;
-    int difficulty = 0;
+    int complexity = 0;
     size_t expected_length = 0;
     size_t actual_length = 0;
     bool non_terminal_found = 0;
@@ -812,7 +853,7 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     {
         // Рандомный выбор номера правила
         rule_to_use = rand() % appliable_rules.size();
-        difficulty += appliable_rules[rule_to_use].complexity;
+        complexity += appliable_rules[rule_to_use].complexity;
 
         // Применение правила
         word = ApplyRule(word, appliable_rules[rule_to_use]);
@@ -867,14 +908,36 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
         {
             if (non_terminals.contains(i_string))
             {
-                for (Rule& i_rule : shortest_path[i_string].path_rules)
+                appliable_rules.clear();
+                non_terminal_found = 0;
+                for (Rule& i_rule : rules)
                 {
+                    if (non_terminal_found && i_rule.left_part != i_string) break;
+                    if (i_rule.left_part == i_string && !GotNonTerminal(i_rule.right_part)){
+                        non_terminal_found = 1;
+                        appliable_rules.push_back(i_rule);
+                    }
+                }
+                if (appliable_rules.size() > 1){
+                    rule_to_use = rand() % appliable_rules.size();
+                    Rule i_rule = appliable_rules[rule_to_use];
                     final_word = ApplyRule(final_word, i_rule);
 
                     current_word_path.path_rules.push_back(i_rule);
                     current_word_path.path_words.push_back(final_word);
                     current_word_path.word = final_word;
                     current_word_path.length++;
+                }
+                else{
+                    for (Rule& i_rule : shortest_path[i_string].path_rules) /////////////RANDOM????
+                    {
+                        final_word = ApplyRule(final_word, i_rule);
+
+                        current_word_path.path_rules.push_back(i_rule);
+                        current_word_path.path_words.push_back(final_word);
+                        current_word_path.word = final_word;
+                        current_word_path.length++;
+                    }
                 }
             }
         }
@@ -891,7 +954,7 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
         words.insert(result);
     }
 
-    return QPair<QString, int>(result, difficulty);
+    return QPair<QString, int>(result, complexity);
 }
 
 QVector<QString> CF_Grammar::GenerateMultipleWords(int Amount, int Max_Length)
@@ -1170,7 +1233,19 @@ Rule::~Rule()
     terminals_count = 0;
     complexity = 0;
     left_part.clear();
+    left_part.squeeze();
     right_part.clear();
+    right_part.squeeze();
+}
+
+void Rule::clear()
+{
+    terminals_count = 0;
+    complexity = 0;
+    left_part.clear();
+    left_part.squeeze();
+    right_part.clear();
+    right_part.squeeze();
 }
 
 //=============== Методы структуры "Путь" =================================================================
@@ -1262,9 +1337,33 @@ Path::Path()
 Path::~Path()
 {
     length = 0;
+    for(Rule& r : path_rules)
+        r.clear();
     path_rules.clear();
+    path_rules.squeeze();
+
+    for(QVector<QString> v : path_words)
+    {v.clear(); v.squeeze();}
     path_words.clear();
+    path_words.squeeze();
     word.clear();
+    word.squeeze();
+}
+
+void Path::clear()
+{
+    length = 0;
+    for(Rule& r : path_rules)
+        r.clear();
+    path_rules.clear();
+    path_rules.squeeze();
+
+    for(QVector<QString> v : path_words)
+    {v.clear(); v.squeeze();}
+    path_words.clear();
+    path_words.squeeze();
+    word.clear();
+    word.squeeze();
 }
 
 //=============== Применение правила к слову ===============================================================
@@ -1437,3 +1536,31 @@ QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, 
     return debugMsg;
 }
 
+
+PathPermutations::~PathPermutations()
+{
+    rule.clear();
+    for(QPair<QString, QVector<QString>>& pair : right_part)
+    {
+        pair.first.clear();
+        pair.first.squeeze();
+        pair.second.clear();
+        pair.second.squeeze();
+    }
+    right_part.clear();
+    right_part.squeeze();
+}
+
+void PathPermutations::clear()
+{
+    rule.clear();
+    for(QPair<QString, QVector<QString>>& pair : right_part)
+    {
+        pair.first.clear();
+        pair.first.squeeze();
+        pair.second.clear();
+        pair.second.squeeze();
+    }
+    right_part.clear();
+    right_part.squeeze();
+}

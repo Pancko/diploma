@@ -151,3 +151,67 @@ int combineInBlock(QVector<Letter>& block, int pos)
     block.remove(pos);
     return pos - 1;
 }
+
+QString reduce(const QString& lang, const QStringList& sigma)
+{
+    QString ch;
+    QString result = "L = {w ∈ ∑<sup>*</sup> : ";
+    QVector<Letter> block;
+    for(int i = result.size(); i < lang.size(); i++)
+    {
+        ch = lang[i];
+
+        if (sigma.contains(ch) && lang[i + 1] != '}') // нашли символ из алфавита (начало блока)
+        {
+            int pos = i;
+            while(true) // читаем очередной блок одинаковых букв
+            {
+                if(lang[pos] != ch) break;
+                if(lang[pos + 1] == '<'){
+                    QString temp = lang.mid(pos, lang.indexOf("</sup>", pos) - pos + 6);
+                    block.push_back(Letter(temp));
+                    pos = lang.indexOf("</sup>", pos) + 6;
+                }
+                else {
+                    block.push_back(Letter(ch));
+                    pos++;
+                }
+            }
+            i = pos - 1;
+            if(block.size() == 1) {
+                result += ch;
+                if(block[0].havePow)
+                {
+                    result += "<sup>";
+                    if (block[0].isIntPow)
+                        result += QString::number(block[0].intPow);
+                    else
+                        result += block[0].chPow;
+                    result += "</sup>";
+                }
+            }
+            else
+            {
+                for (int j = 1; j < block.size(); j ++)
+                {
+                    j = combineInBlock(block, j);
+                }
+                for (Letter &l: block)
+                {
+                    if (!l.havePow)
+                        result += l.value;
+                    else
+                    {
+                        if (l.isIntPow)
+                            result += l.value + "<sup>" + QString::number(l.intPow) + "</sup>";
+                        else
+                            result += l.value + "<sup>" + l.chPow + "</sup>";
+                    }
+                }
+            }
+            block.clear();
+        }
+        else result += ch;
+    }
+    return result;
+}

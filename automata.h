@@ -31,14 +31,14 @@ enum States{
     S_EXCLAMATION,
     S_WEQ,
     S_WNEQ,
-    S_POL,
-    S_POL2,
+    S_PAL,
+    S_KEYWORD,
     S_END};
 
 struct SymbolicToken
 {
     Tokens tokenClass;
-    QString val;
+    QChar val;
 };
 
 class Automata
@@ -46,32 +46,49 @@ class Automata
 public:
 
     Automata();
+    ~Automata();
 
     SymbolicToken transliterator(const QChar& symbol);
     void initialize_table();
-    CF_Grammar parse(const QString& lang);
+    void initialize_detect_table();
+    void initialize_keyword_begin();
+    void initialize_sigma(const QStringList& S);
+    CF_Grammar* parse(const QString& lang);
 
 private:
 
     const static int state_number = S_END; // Число состояний (без S_END)
     const static int tokens_number = T_END + 1; // Число возможных токенов
     function_pointer table[state_number][tokens_number];
+    QVector<std::tuple<char, int, function_pointer>> detect_table;
+
+    QMap<QChar, int> keyword_begin;
+    QVector<int> prev_states;
+
+    QStringList sigma;
 
     SymbolicToken token;      // Токены для транслитерации
 
     CF_Grammar resultGrammar;
     QChar prev_symbol;
+    QString keyword;
     int state;
+    int keyw_detection;
     int error_state;
     int error_symbolicTokenClass;
 
     // Функции автомата:
+    int KeywordStart();
+    int Keyword();
+    int KeywordNext();
+    int KeywordFound();
+
     int Error();
     int Letter();
     int Space();
     int Exclamation();
     int Eq();
-    int Polynome();
+    int Palindrome();
 
     int End();
 

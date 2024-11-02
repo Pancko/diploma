@@ -17,5 +17,6 @@ struct Letter
 };
 
 int combineInBlock(QVector<Letter> &block, int pos);
+QString reduce(const QString &language, const QStringList &sigma);
 
 #endif // REGEXPLUS_H

@@ -27,6 +27,7 @@ struct Rule
     Rule();
     Rule(QString Left_Part, QVector<QString> Right_Part, int Complexity = 0);
     ~Rule();
+    void clear();
 };
 
 // Путь из нетерминала до определенного слова
@@ -45,6 +46,7 @@ struct Path
 
     Path();
     ~Path();
+    void clear();
 };
 
 // Подстановка всех возможных терминальных слов в каждый нетерминал правила (Для таблицы динамического программирования)
@@ -54,6 +56,8 @@ struct PathPermutations
     QVector<QPair<QString, QVector<QString>>> right_part;
 public:
     PathPermutations(Rule _rule) { rule = _rule; }
+    ~PathPermutations();
+    void clear();
 };
 
 // Основной класс - КС-грамматика
@@ -72,6 +76,7 @@ private:
 public:
     CF_Grammar();
     ~CF_Grammar();
+    void clear();
 
     // Получить поля
     QString GetStartingNT();

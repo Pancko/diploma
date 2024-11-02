@@ -1,13 +1,14 @@
 #include "diploma_mainwindow.h"
 #include "./ui_diploma_mainwindow.h"
 #include <QIntValidator>
-#include <QThread>
 #include <QFileDialog>
 #include <QFile>
 #include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QThread>
 #include "regExPlus.h"
+#include "cf_analyzer.h"
 
 Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -26,7 +27,7 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
 
     ui->sigma_lineEdit->setPlaceholderText("a,b,c");
     ui->sigma_lineEdit->setText(ui->sigma_lineEdit->placeholderText());
-    QRegularExpression rx("([a-z],)*|[a-z]");
+    QRegularExpression rx("([a-vx-z],)*|[a-vx-z]");
     QValidator *validator = new QRegularExpressionValidator(rx, this);
     ui->sigma_lineEdit->setValidator(validator);
 }
@@ -235,50 +236,6 @@ void Diploma_MainWindow::on_wordCount_lineEdit_textChanged(const QString &arg1)
         wordCount = ui->wordCount_lineEdit->placeholderText().toInt();
 }
 
-
-bool CF_Analyzer::isStopped()
-{
-    bool stopped;
-    mutex.lock();
-    stopped = this->stopped;
-    mutex.unlock();
-    return stopped;
-}
-
-void CF_Analyzer::setLocals(const CF_Grammar &Grammar1, const CF_Grammar &Grammar2, int Words_Lenght, int Words_Count, QTextEdit* tE)
-{
-    grammar1 = Grammar1;
-    grammar2 = Grammar2;
-    wordLength = Words_Lenght;
-    wordCount = Words_Count;
-    outputTextEdit = tE;
-}
-
-CF_Analyzer::CF_Analyzer()
-{
-
-}
-
-void CF_Analyzer::compare()
-{
-    output = EquivalenceTest(grammar1, grammar2, wordLength, wordCount);
-    emit exited();
-    this->thread()->quit();
-}
-
-void CF_Analyzer::stop()
-{
-    mutex.lock();
-    stopped = true;
-    mutex.unlock();
-}
-
-void CF_Analyzer::writeOutput()
-{
-    outputTextEdit->append(output);
-    outputTextEdit->append("=========================\n");
-}
-
 void Diploma_MainWindow::on_langGenerate_pB_clicked()
 {
     QString err;
@@ -303,84 +260,21 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         QPair<QString, int> language = languageCFG->GenerateWord(difficulty * 10);
         while((language.second < (difficulty - 1) * 10) || (language.second > difficulty * 10))
             language = languageCFG->GenerateWord(difficulty * 10);
-        qDebug() << language.first;
+        qDebug() << language.first;                                         ////////////////////////////
         QString temp;
         while(temp != language.first)
         {
             temp = language.first;
-            language.first = reduce(&language.first, &sigma);
+            language.first = reduce(language.first, sigma);
         }
-        qDebug() << language.first << Qt::endl;
-        ui->langCFG_textEdit->setText(languageCFG->PrintGrammar(1,1));
+        qDebug() << language.first << Qt::endl;                             ////////////////////////////////////////
         ui->language_Label->setText("Язык: " + language.first);
+        automata.initialize_sigma(sigma);
+        generatedCFG = automata.parse(language.first);
+        ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(1,1));
     }
     else
         ui->language_Label->setText("Язык: " + err);
-}
-
-QString Diploma_MainWindow::reduce(const QString *lang, const QStringList *sigma)
-{
-    QString ch;
-    QString language = *lang;
-    QString result = "L = {w ∈ ∑<sup>*</sup> : ";
-    QVector<Letter> block;
-    for(int i = result.size(); i < language.size(); i++)
-    {
-        ch = language[i];
-
-        if (sigma->contains(ch) && language[i + 1] != '}') // нашли символ из алфавита (начало блока)
-        {
-            int pos = i;
-            while(true) // читаем очередной блок одинаковых букв
-            {
-                if(language[pos] != ch) break;
-                if(language[pos + 1] == '<'){
-                    QString temp = language.mid(pos, language.indexOf("</sup>", pos) - pos + 6);
-                    block.push_back(Letter(temp));
-                    pos = language.indexOf("</sup>", pos) + 6;
-                }
-                else {
-                    block.push_back(Letter(ch));
-                    pos++;
-                }
-            }
-            i = pos - 1;
-            if(block.size() == 1) {
-                result += ch;
-                if(block[0].havePow)
-                {
-                    result += "<sup>";
-                    if (block[0].isIntPow)
-                        result += QString::number(block[0].intPow);
-                    else
-                        result += block[0].chPow;
-                    result += "</sup>";
-                }
-            }
-            else
-            {
-                for (int j = 1; j < block.size(); j ++)
-                {
-                    j = combineInBlock(block, j);
-                }
-                for (Letter &l: block)
-                {
-                    if (!l.havePow)
-                        result += l.value;
-                    else
-                    {
-                        if (l.isIntPow)
-                            result += l.value + "<sup>" + QString::number(l.intPow) + "</sup>";
-                        else
-                            result += l.value + "<sup>" + l.chPow + "</sup>";
-                    }
-                }
-            }
-            block.clear();
-        }
-        else result += ch;
-    }
-    return result;
 }
 
 
