@@ -2,6 +2,8 @@
 #define AUTOMATA_H
 
 #include "cf_grammar.h"
+#include "regExPlus.h"
+#include <QStack>
 class Automata;
 typedef int (Automata::*function_pointer)();
 
@@ -23,6 +25,7 @@ enum Tokens{
     T_LEFTSQBR,
     T_RIGHTSQBR,
     T_ERROR,
+    T_EOS,
     T_END
 };
 enum States{
@@ -33,7 +36,15 @@ enum States{
     S_WNEQ,
     S_PAL,
     S_KEYWORD,
+    S_BLOCK,
+    S_BLOCKBRACKETS,
+    S_BLOCKBRWAITINGPOW,
+    S_BLOCKPARSE,
+    S_SKIPPOW,
     S_END};
+
+QString debugState(int i);
+QString debugToken(int i);
 
 struct SymbolicToken
 {
@@ -59,11 +70,15 @@ private:
 
     const static int state_number = S_END; // Число состояний (без S_END)
     const static int tokens_number = T_END + 1; // Число возможных токенов
+    // Таблицы
     function_pointer table[state_number][tokens_number];
     QVector<std::tuple<char, int, function_pointer>> detect_table;
-
     QMap<QChar, int> keyword_begin;
+    //
     QVector<int> prev_states;
+    QVector<Letter> current_block;
+    QStack<QPair<QString, int>> blocks_stack;
+    QVector<QString> sub_strs;
 
     QStringList sigma;
 
@@ -76,6 +91,9 @@ private:
     int keyw_detection;
     int error_state;
     int error_symbolicTokenClass;
+    int non_terminals;
+    int brackets;
+    int str_layer;
 
     // Функции автомата:
     int KeywordStart();
@@ -89,6 +107,14 @@ private:
     int Exclamation();
     int Eq();
     int Palindrome();
+
+    int BlockLetter();
+    int BlockDigit();
+    int BlockAnalyze();
+    int BlockBracketsStart();
+    int BlockBracketsFollow();
+    int BlockBracketsEnd();
+    int BlockParse();
 
     int End();
 

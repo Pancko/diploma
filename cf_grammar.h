@@ -91,6 +91,7 @@ public:
     Rule GetRuleFromString(const QString& String);
     // Добавление правила в грамматику
     void AddRule(const Rule& New_Rule);
+    void ModRule(int index, const QString &str);
 
 
     // Генерация путей. Анализ и удаление циклов, бесполезных нетерминалов

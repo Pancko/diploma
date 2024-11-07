@@ -271,7 +271,9 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         ui->language_Label->setText("Язык: " + language.first);
         automata.initialize_sigma(sigma);
         generatedCFG = automata.parse(language.first);
-        ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(1,1));
+        ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(0,0));
+        generatedCFG->AnalyzeNonTerminals();
+        ui->langCFG_textEdit->setText(ui->langCFG_textEdit->toPlainText() + generatedCFG->PrintGrammar(1,1));
     }
     else
         ui->language_Label->setText("Язык: " + err);

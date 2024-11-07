@@ -14,6 +14,8 @@ struct Letter
 
     Letter();
     Letter(const QString& in);
+
+    void addPow(const QString& in);
 };
 
 int combineInBlock(QVector<Letter> &block, int pos);

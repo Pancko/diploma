@@ -50,6 +50,37 @@ Letter::Letter(const QString& in)
     }
 }
 
+void Letter::addPow(const QString &in)
+{
+    havePow = true;
+    QStringList variants {"+", "*"};
+    switch(variants.indexOf(in[in.indexOf("</sup>") - 1]))
+    {
+    case -1: //число
+    {
+        isIntPow = true;
+        int temp = in.indexOf("<sup>") + 5;
+        intPow = in.mid(temp, in.indexOf("</sup>") - temp).toInt(); //a<sup>2</sup>
+        chPow = nullptr;
+        return;
+    }
+    case 0: // +
+    {
+        isIntPow = false;
+        intPow = -1;
+        chPow = "+";
+        return;
+    }
+    case 1: // *
+    {
+        isIntPow = false;
+        intPow = -1;
+        chPow = "*";
+        return;
+    }
+    }
+}
+
 int combineInBlock(QVector<Letter>& block, int pos)
 {
     Letter *first = &block[pos - 1];

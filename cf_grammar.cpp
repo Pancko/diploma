@@ -242,6 +242,11 @@ void CF_Grammar::AddRule(const Rule& New_Rule)
     rules.push_back(rule_to_add);
 }
 
+void CF_Grammar::ModRule(int index, const QString &str)
+{
+    rules[index].right_part.push_back(str);
+}
+
 //=============== Анализ полученной грамматики, составление путей для нетерминалов ======================
 
 void CF_Grammar::AnalyzeNonTerminals()

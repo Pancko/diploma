@@ -92,6 +92,10 @@ SymbolicToken Automata::transliterator(const QChar &symbol)
         res.tokenClass = T_RIGHTSQBR;
         return res;
     }
+    if(symbol == '{'){
+        res.tokenClass = T_EOS;
+        return res;
+    }
     if(symbol == '}'){
         res.tokenClass = T_END;
         return res;
@@ -121,21 +125,44 @@ void Automata::initialize_table()
     table[S_EXCLAMATION][T_EQ] = &Automata::Eq;
 
     table[S_WEQ][T_LETTER] = &Automata::Letter;
+    table[S_WEQ][T_LEFTROUNDBR] = &Automata::BlockBracketsStart;
 
     table[S_WNEQ][T_LETTER] = &Automata::Letter;
+    table[S_WNEQ][T_LEFTROUNDBR] = &Automata::BlockBracketsStart;
 
     table[S_PAL][T_LESS] = &Automata::KeywordStart;
     table[S_PAL][T_MINUS] = &Automata::KeywordStart;
     table[S_PAL][T_END] = &Automata::Palindrome;
 
-    // table[S_KEYWORD][T_LESS] = &Automata::KeywordStart;
-    // table[S_KEYWORD][T_MINUS] = &Automata::KeywordStart;
-    // table[S_KEYWORD][T_PLUS] = &Automata::KeywordStart;
-    // table[S_KEYWORD][T_STAR] = &Automata::KeywordStart;
+    table[S_KEYWORD][T_LESS] = &Automata::KeywordStart;
+    table[S_KEYWORD][T_MINUS] = &Automata::KeywordStart;
+    table[S_KEYWORD][T_PLUS] = &Automata::KeywordStart;
+    table[S_KEYWORD][T_STAR] = &Automata::KeywordStart;
     table[S_KEYWORD][T_LETTER] = &Automata::Keyword;
     table[S_KEYWORD][T_MORE] = &Automata::Keyword;
     table[S_KEYWORD][T_DIGIT] = &Automata::Keyword;
     table[S_KEYWORD][T_SLASH] = &Automata::Keyword;
+
+    table[S_BLOCK][T_LETTER] = &Automata::BlockLetter;
+    table[S_BLOCK][T_LESS] = &Automata::KeywordStart;
+    table[S_BLOCK][T_DIGIT] = &Automata::BlockDigit;
+    table[S_BLOCK][T_PLUS] = &Automata::KeywordStart;
+    table[S_BLOCK][T_STAR] = &Automata::KeywordStart;
+    table[S_BLOCK][T_LEFTROUNDBR] = &Automata::BlockBracketsStart;
+    table[S_BLOCK][T_RIGHTROUNDBR] = &Automata::BlockBracketsEnd;
+    table[S_BLOCK][T_EOS] = &Automata::BlockBracketsEnd; ////////////
+    table[S_BLOCK][T_END] = &Automata::BlockAnalyze;
+
+    for (int j = 0; j < tokens_number; j++)
+    {
+        table[S_BLOCKBRACKETS][j] = &Automata::BlockBracketsFollow;
+    }
+    table[S_BLOCKBRACKETS][T_RIGHTROUNDBR] = &Automata::BlockBracketsEnd;
+
+    table[S_BLOCKBRWAITINGPOW][T_LESS] = &Automata::KeywordStart;
+    table[S_BLOCKBRWAITINGPOW][T_PLUS] = &Automata::KeywordStart;
+    table[S_BLOCKBRWAITINGPOW][T_STAR] = &Automata::KeywordStart;
+    table[S_BLOCKBRWAITINGPOW][T_DIGIT] = &Automata::BlockDigit;
 }
 
 void Automata::initialize_keyword_begin()
@@ -166,9 +193,32 @@ void Automata::initialize_detect_table()
 CF_Grammar* Automata::parse(const QString& lang)
 {
     resultGrammar.clear();
+
     prev_states.clear();
+    prev_states.squeeze();
+
+    current_block.clear();
+    current_block.squeeze();
+
+    sub_strs.clear();
+    sub_strs.squeeze();
+
+    blocks_stack.clear();
+    blocks_stack.squeeze();
+
+    keyword.clear();
+    keyword.squeeze();
+
+    state = 0;
+    keyw_detection = 0;
+    error_state = 0;
+    error_symbolicTokenClass = 0;
+    non_terminals = 0;
+    brackets = 0;
+    str_layer = 0;
 
     QChar symbol;
+    prev_symbol = symbol;
 
     int pos = lang.indexOf("L = {w ∈ ∑<sup>*</sup> : ");
     if (pos == -1) throw "Неправильный язык";
@@ -177,18 +227,26 @@ CF_Grammar* Automata::parse(const QString& lang)
     prev_states.push_back(state);
     while (state != S_END)
     {
-        qDebug() << "state = " << QString::number(state);
         if (prev_states.last() != state)
             prev_states.push_back(state);
         prev_symbol = symbol;
         symbol = lang[pos];
-        qDebug() << "symbol = " << symbol;
         token = transliterator(symbol);
-        qDebug() << "token = " << QString::number(token.tokenClass);
+
+        qDebug() << "State1: " << debugState(state) << ", symbol = " << symbol << "token = " << debugToken(token.tokenClass);
+
         error_state = state;
         error_symbolicTokenClass = token.tokenClass;
         state = (this->*table[state][token.tokenClass])();
+
+        qDebug() << "State2: " << debugState(state);
+
         pos++;
+
+        // if(current_block.isEmpty())
+        //     qDebug() << "BLOCK EMPTY";
+        // else
+        //     qDebug() << "BLOCK" << current_block[0].value;
     }
 
     return &resultGrammar;
@@ -233,6 +291,7 @@ int Automata::KeywordNext()
 
 int Automata::KeywordFound()
 {
+    qDebug() << "keyword found = " << keyword;
     int st;
     while(true)
     {
@@ -240,6 +299,79 @@ int Automata::KeywordFound()
             break;
         prev_states.pop_back();
     }
+    if (st == S_BLOCK && keyword.contains("</sup>"))
+    {
+        current_block.last().addPow(keyword);
+    }
+    if (st == S_BLOCKBRWAITINGPOW && keyword.contains("</sup>")){
+        struct Letter l;
+        QStringList variants {"+", "*"};
+        Rule new_rule;
+        l.addPow(keyword);
+        keyword.clear();
+        if (prev_states.contains(S_WEQ))
+        {
+            QString temp = blocks_stack.top().first;
+            new_rule.left_part = temp;
+            switch(variants.indexOf(l.chPow))
+            {
+            case -1: //число
+            {
+                temp = temp.insert(temp.indexOf(']'), "''");
+                for(int j = 0; j < l.intPow; j++)
+                    new_rule.right_part.push_back(temp);
+                resultGrammar.AddRule(new_rule);
+                break;
+            }
+            case 0: // +
+            {
+                //qDebug() << "POW + ";
+                temp = temp.insert(temp.indexOf(']'), "''");
+                new_rule.right_part.push_back(temp);
+                temp = blocks_stack.top().first;
+                temp = temp.insert(temp.indexOf(']'), "'");
+                new_rule.right_part.push_back(temp);
+                resultGrammar.AddRule(new_rule);
+
+                new_rule.clear();
+                temp = blocks_stack.top().first;
+                new_rule.left_part = temp.insert(temp.indexOf(']'), "'");
+                temp = blocks_stack.top().first;
+                new_rule.right_part.push_back(temp.insert(temp.indexOf(']'), "''"));
+                temp = blocks_stack.top().first;
+                new_rule.right_part.push_back(temp.insert(temp.indexOf(']'), "'"));
+                resultGrammar.AddRule(new_rule);
+
+                new_rule.right_part.clear();
+                new_rule.right_part.push_back("[EPS]");
+                resultGrammar.AddRule(new_rule);
+                break;
+            }
+            case 1: // *
+            {
+                //qDebug() << "POW * ";
+                new_rule.right_part.push_back(temp.insert(temp.indexOf(']'), "''"));
+                temp = blocks_stack.top().first;
+                new_rule.right_part.push_back(temp);
+                resultGrammar.AddRule(new_rule);
+
+                new_rule.right_part.clear();
+                new_rule.right_part.push_back("[EPS]");
+                resultGrammar.AddRule(new_rule);
+                break;
+            }
+            }
+            new_rule.clear();
+            temp = blocks_stack.top().first;
+            new_rule.left_part = temp.insert(temp.indexOf(']'), "''");
+            resultGrammar.AddRule(new_rule);
+            blocks_stack.top().second = resultGrammar.GetRules().indexOf(new_rule); // местонахождение нового порождающего блока (как нулевое правило S обычно)
+            st = BlockParse();
+        }
+    }
+    if (keyword.contains("</sup>"))
+        keyword.clear();
+
     return st;
 }
 
@@ -254,8 +386,13 @@ int Automata::Letter()
     if(state == S_START && token.val == 'w')
         return S_W;
 
-    if((state == S_WEQ || state == S_WNEQ) && token.val == 'w')
-        return S_PAL;
+    if(state == S_WEQ || state == S_WNEQ)
+    {
+        if (token.val == 'w')
+            return S_PAL;
+        if (sigma.contains(token.val))
+            return BlockLetter();
+    }
 
     return Error();
 }
@@ -321,7 +458,236 @@ int Automata::Palindrome()
     return Error();
 }
 
+int Automata::BlockLetter()
+{
+    int st = S_BLOCK;
+    if(!current_block.isEmpty())
+    {
+        if(current_block.last().value != token.val)
+            st = BlockAnalyze();
+    }
+    struct Letter l;
+    l.value = token.val;
+    current_block.push_back(l);
+    return st;
+}
+
+int Automata::BlockDigit()
+{
+    keyword += token.val;
+    return state;
+}
+
+int Automata::BlockAnalyze()
+{
+    struct Letter l;
+    QStringList variants {"+", "*"};
+    int rule_pos = 0;
+    if(prev_states.contains(S_WEQ))
+    {
+        if(!blocks_stack.isEmpty())
+            rule_pos = blocks_stack.top().second;
+        for(int i = 0; i < current_block.size(); i++)
+        {
+            Rule new_rule;
+            l = current_block[i];
+
+            if(non_terminals == 0)
+                resultGrammar.AddRule(Rule("[0]", QVector<QString>({"[1]"})));
+            else
+                resultGrammar.ModRule(rule_pos, QString("[" + QString::number(non_terminals + 1) + "]"));
+
+            non_terminals++;
+
+            if (l.havePow)
+            {
+                //qDebug() << "int pow = " << QString::number(l.intPow);
+                switch(variants.indexOf(l.chPow))
+                {
+                case -1: //число
+                {
+                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
+                    for(int j = 0; j < l.intPow; j++)
+                        new_rule.right_part.push_back(l.value);
+                    resultGrammar.AddRule(new_rule);
+                    break;
+                }
+                case 0: // +
+                {
+                    //qDebug() << "POW + ";
+                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
+                    new_rule.right_part.push_back(l.value);
+                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
+                    resultGrammar.AddRule(new_rule);
+
+                    new_rule.clear();
+                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "']");
+                    new_rule.right_part.push_back(l.value);
+                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
+                    resultGrammar.AddRule(new_rule);
+
+                    new_rule.right_part.clear();
+                    new_rule.right_part.push_back("[EPS]");
+                    resultGrammar.AddRule(new_rule);
+                    break;
+                }
+                case 1: // *
+                {
+                    //qDebug() << "POW * ";
+                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
+                    new_rule.right_part.push_back(l.value);
+                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "]"));
+                    resultGrammar.AddRule(new_rule);
+
+                    new_rule.right_part.clear();
+                    new_rule.right_part.push_back("[EPS]");
+                    resultGrammar.AddRule(new_rule);
+                    break;
+                }
+                }
+            }
+            else {
+                new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
+                new_rule.right_part.push_back(QString(l.value));
+                resultGrammar.AddRule(new_rule);
+            }
+        }
+    }
+    current_block.clear();
+    if(token.tokenClass == T_END)
+        return S_END;
+    return state;
+}
+
+int Automata::BlockBracketsStart()
+{
+    brackets++;
+    int st = 0;
+    if(!current_block.isEmpty())
+    {
+        st = BlockAnalyze();
+    }
+    if (st == S_END) return S_END;
+    if(resultGrammar.GetRules().isEmpty())
+        resultGrammar.AddRule(Rule("[0]", QVector<QString>({QString("[Br" + QString::number(non_terminals + 1) + "]")})));
+    else{
+        if  (str_layer == 0)
+            resultGrammar.ModRule(0, QString("[Br" + QString::number(non_terminals + 1) + "]"));
+        else{
+            resultGrammar.ModRule(blocks_stack[str_layer - 1].second, QString("[Br" + QString::number(non_terminals + 1) + "]"));
+        }
+    }
+    blocks_stack.push(QPair<QString, int>(QString("[Br" + QString::number(non_terminals + 1) + "]"), -1));
+    non_terminals++;
+    return S_BLOCKBRACKETS;
+}
+
+int Automata::BlockBracketsFollow()
+{
+    if (sub_strs.size() < brackets)
+        sub_strs.resize(brackets);
+    for (int i = 0; i < brackets; i++)
+        sub_strs[i] += token.val;
+    if (token.tokenClass == T_LEFTROUNDBR)
+        brackets++;
+    return S_BLOCKBRACKETS;
+}
+
+int Automata::BlockBracketsEnd()
+{
+    if (token.tokenClass != T_EOS)
+        brackets--;
+    if(brackets == 0)
+    {
+        if (state == S_BLOCKBRACKETS)
+            return S_BLOCKBRWAITINGPOW;
+        if (state == S_BLOCK){
+            if (!current_block.isEmpty())
+                BlockAnalyze();
+            blocks_stack.pop();
+            return S_SKIPPOW;
+        }
+        brackets = 0;
+    } else return BlockBracketsFollow();
+    return Error();
+}
+
+int Automata::BlockParse()
+{
+    qDebug() << "IN BLOCK PARSER";
+    QChar symbol;
+    QString sub = sub_strs[str_layer] + '{';
+    str_layer++;
+    int pos = 0;
+    state = S_BLOCK;
+    while (state != S_SKIPPOW)
+    {
+        if (prev_states.last() != state)
+            prev_states.push_back(state);
+        prev_symbol = symbol;
+        symbol = sub[pos];
+        token = transliterator(symbol);
+        qDebug() << "State1: " << debugState(state) << ", symbol = " << symbol << "token = " << debugToken(token.tokenClass);
+        error_state = state;
+        error_symbolicTokenClass = token.tokenClass;
+        state = (this->*table[state][token.tokenClass])();
+        qDebug() << "State2: " << debugState(state);
+        pos++;
+    }
+    str_layer--;
+    sub_strs[str_layer].clear();
+    qDebug() << "EXITED BLOCK PARSER";
+    return S_BLOCK;
+}
+
 int Automata::End()
 {
     return S_END;
+}
+
+
+QString debugState(int i)
+{
+    switch(i){
+    case S_START: return "S_START";
+    case S_W: return "S_W";
+    case S_EXCLAMATION: return "S_EXCLAMATION";
+    case S_WEQ: return "S_WEQ";
+    case S_WNEQ: return "S_WNEQ";
+    case S_PAL: return "S_PAL";
+    case S_KEYWORD: return "S_KEYWORD";
+    case S_BLOCK: return "S_BLOCK";
+    case S_BLOCKBRACKETS: return "S_BLOCKBRACKETS";
+    case S_BLOCKBRWAITINGPOW: return "S_BLOCKBRWAITINGPOW";
+    case S_BLOCKPARSE: return "S_BLOCKPARSE";
+    case S_SKIPPOW: return "S_SKIPPOW";
+    case S_END: return "S_END";
+    }
+    return "err?";
+}
+
+QString debugToken(int i)
+{
+    switch(i){
+    case T_SPACE: return "T_SPACE";
+    case T_VERTICALBAR: return "T_VERTICALBAR";
+    case T_EQ: return "T_EQ";
+    case T_EXCLAMATION: return "T_EXCLAMATION";
+    case T_LESS: return "T_LESS";
+    case T_MORE: return "T_MORE";
+    case T_SLASH: return "T_SLASH";
+    case T_PLUS: return "T_PLUS";
+    case T_MINUS: return "T_MINUS";
+    case T_STAR: return "T_STAR";
+    case T_LETTER: return "T_LETTER";
+    case T_DIGIT: return "T_DIGIT";
+    case T_LEFTROUNDBR: return "T_LEFTROUNDBR";
+    case T_RIGHTROUNDBR: return "T_RIGHTROUNDBR";
+    case T_LEFTSQBR: return "T_LEFTSQBR";
+    case T_RIGHTSQBR: return "T_RIGHTSQBR";
+    case T_ERROR: return "T_ERROR";
+    case T_EOS: return "T_EOS";
+    case T_END: return "T_END";
+    }
+    return "err?";
 }
