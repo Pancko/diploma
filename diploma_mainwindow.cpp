@@ -8,17 +8,19 @@
 #include <QJsonObject>
 #include <QThread>
 #include "regExPlus.h"
-#include "cf_analyzer.h"
+#include "cf_analyzer_session.h"
 
 Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Diploma_MainWindow)
 {
-    languageCFG = new CF_Grammar();
     ui->setupUi(this);
+    languageCFG = new CF_Grammar();
+    spinner = new WaitingSpinnerWidget(ui->output_textEdit);
+
     ui->stackedWidget->setCurrentWidget(ui->mainMenu_page);
 
-    ui->length_lineEdit->setPlaceholderText("30");
+    ui->length_lineEdit->setPlaceholderText("10");
     ui->wordCount_lineEdit->setPlaceholderText("10");
     ui->length_lineEdit->setText(ui->length_lineEdit->placeholderText());
     ui->wordCount_lineEdit->setText(ui->wordCount_lineEdit->placeholderText());
@@ -30,6 +32,11 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     QRegularExpression rx("([a-vx-z],)*|[a-vx-z]");
     QValidator *validator = new QRegularExpressionValidator(rx, this);
     ui->sigma_lineEdit->setValidator(validator);
+
+    panel_left = new PanelLeftSide(this);
+    panel_left->setOpenEasingCurve (QEasingCurve::Type::OutElastic);
+    panel_left->setCloseEasingCurve(QEasingCurve::Type::InElastic);
+    panel_left->init();
 }
 
 Diploma_MainWindow::~Diploma_MainWindow()
@@ -60,8 +67,8 @@ void Diploma_MainWindow::on_InfiniteTasks_pB_clicked()
 
 void Diploma_MainWindow::on_Compare_pB_clicked()
 {
-    CF_Grammar grammar1;
-    CF_Grammar grammar2;
+    CF_Grammar *grammar1 = new CF_Grammar();
+    CF_Grammar *grammar2 = new CF_Grammar();
     QString str1 = ui->grammar1_textEdit->toPlainText();
     QString str2 = ui->grammar2_textEdit->toPlainText();
     QString error;
@@ -69,34 +76,25 @@ void Diploma_MainWindow::on_Compare_pB_clicked()
     bool isPath = ui->path_chBox->checkState();
     bool errorFound = false;
 
-    QThread* CF_AnalyzerThread = new QThread();
-    CF_Analyzer *CF_analyzer = new CF_Analyzer();
-    CF_analyzer->moveToThread(CF_AnalyzerThread);
-
-    //connect(CF_analyzer, SIGNAL(error(QString)), this, SLOT(errorString(QString)));
-    connect(CF_AnalyzerThread, SIGNAL(started()), CF_analyzer, SLOT(compare()));
-    connect(CF_analyzer, SIGNAL(exited()), CF_AnalyzerThread, SLOT(quit()));
-    connect(CF_analyzer, SIGNAL(exited()), CF_analyzer, SLOT(deleteLater()));
-    connect(CF_AnalyzerThread, SIGNAL(finished()), CF_analyzer, SLOT(writeOutput()));
-    connect(CF_AnalyzerThread, SIGNAL(finished()), CF_AnalyzerThread, SLOT(deleteLater()));
-
-
-    error = grammar1.ReadFromTXT(str1);
+    error = grammar1->ReadFromTXT(str1);
     if (error.size() > 0){
         ui->output_textEdit->append("Грамматика 1. " + error);
         errorFound = true;
     }
-    error = grammar2.ReadFromTXT(str2);
+    error = grammar2->ReadFromTXT(str2);
     if (error.size() > 0){
         ui->output_textEdit->append("Грамматика 2. " + error);
         errorFound = true;
     }
     if (!errorFound){
-        ui->output_textEdit->append(grammar1.PrintGrammar(isDebug, isPath));
-        ui->output_textEdit->append(grammar2.PrintGrammar(isDebug, isPath));
-        CF_analyzer->setLocals(grammar1, grammar2, wordLength, wordCount,  ui->output_textEdit);
-        CF_AnalyzerThread->start();
-        ui->output_textEdit->append(CF_analyzer->output);
+        ui->output_textEdit->append(grammar1->PrintGrammar(isDebug, isPath));
+        ui->output_textEdit->append(grammar2->PrintGrammar(isDebug, isPath));
+        CF_Session *session = new CF_Session();
+        spinner->start();
+        ui->clearOutput_pB->setDisabled(1);
+        ui->Compare_pB->setDisabled(1);
+        session->addThread(grammar1, grammar2, wordLength, wordCount,  ui->output_textEdit);
+        connect(session, SIGNAL(stopAll()), this, SLOT(stop_spinner()));
     } else
         ui->output_textEdit->append("=========================\n");
 }
@@ -215,6 +213,13 @@ QString Diploma_MainWindow::load()
     return result;
 }
 
+void Diploma_MainWindow::stop_spinner()
+{
+    ui->Compare_pB->setDisabled(0);
+    ui->clearOutput_pB->setDisabled(0);
+    spinner->stop();
+}
+
 void Diploma_MainWindow::on_clearOutput_pB_clicked()
 {
     ui->output_textEdit->clear();
@@ -271,9 +276,16 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         ui->language_Label->setText("Язык: " + language.first);
         automata.initialize_sigma(sigma);
         generatedCFG = automata.parse(language.first);
-        ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(0,0));
+        // ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(0,0));
         generatedCFG->AnalyzeNonTerminals();
-        ui->langCFG_textEdit->setText(ui->langCFG_textEdit->toPlainText() + generatedCFG->PrintGrammar(1,1));
+        ui->langCFG_textEdit->setText(/*ui->langCFG_textEdit->toPlainText() + */generatedCFG->PrintGrammar(0,0));
+
+        //qDebug() << generatedCFG->PrintGrammar(1,1);
+
+        generatedCFG->GenerateMultipleWords(50, 10);
+        QSet<QString> words = generatedCFG->GetWords();
+        for (const QString &word : words)
+            ui->langCFG_textEdit->append(word);
     }
     else
         ui->language_Label->setText("Язык: " + err);
@@ -286,5 +298,39 @@ void Diploma_MainWindow::on_sigma_lineEdit_textChanged(const QString &arg1)
     QString newStr = arg1.chopped(1);
     if (newCh.isLetter() && newStr.contains(newCh))
         ui->sigma_lineEdit->setText(newStr);
+}
+
+void Diploma_MainWindow::on_menu_pB_clicked()
+{
+    QVBoxLayout* lay = new QVBoxLayout;
+    QPushButton* btn = new QPushButton("Отмена", this);
+    btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    connect(btn, &QAbstractButton::clicked, this, [=] {
+        panel_left->closePanel();
+    });
+    lay->addWidget(btn);
+    for (int i = 0; i < ui->stackedWidget->count(); i ++)
+    {
+        if (i != ui->stackedWidget->currentIndex())
+        {
+            QPushButton* btn = new QPushButton(pages[i], this);
+            btn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+            connect(btn, &QAbstractButton::clicked, this, [=] {
+                ui->stackedWidget->setCurrentIndex(i);
+                panel_left->closePanel();
+            });
+            lay->addWidget(btn);
+        }
+    }
+    lay->setAlignment(Qt::AlignCenter);
+    QWidget* proxy = new QWidget(this);
+    proxy->setLayout(lay);
+    panel_left->setWidget(proxy);
+    panel_left->setFixedWidth(proxy->size().width() * 1.1);
+    panel_left->setFixedHeight(proxy->size().height() * 1.2);
+    panel_left->setAlignment(Qt::AlignCenter);
+    panel_left->openPanel();
 }
 

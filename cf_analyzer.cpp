@@ -1,16 +1,6 @@
 #include "cf_analyzer.h"
-#include <QThread>
 
-bool CF_Analyzer::isStopped()
-{
-    bool stopped;
-    mutex.lock();
-    stopped = this->stopped;
-    mutex.unlock();
-    return stopped;
-}
-
-void CF_Analyzer::setLocals(const CF_Grammar &Grammar1, const CF_Grammar &Grammar2, int Words_Lenght, int Words_Count, QTextEdit* tE)
+void CF_Analyzer::setLocals(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words_Lenght, int Words_Count, QTextEdit* tE)
 {
     grammar1 = Grammar1;
     grammar2 = Grammar2;
@@ -21,21 +11,39 @@ void CF_Analyzer::setLocals(const CF_Grammar &Grammar1, const CF_Grammar &Gramma
 
 CF_Analyzer::CF_Analyzer()
 {
-
+    grammar1 = NULL;
+    grammar2 = NULL;
+    wordLength = 0;
+    wordCount = 0;
+    outputTextEdit = NULL;
 }
 
-void CF_Analyzer::compare()
+CF_Analyzer::CF_Analyzer(CF_Grammar *Grammar1, CF_Grammar *Grammar2, int Words_Lenght, int Words_Count, QTextEdit *tE)
 {
-    output = EquivalenceTest(grammar1, grammar2, wordLength, wordCount);
-    emit exited();
-    this->thread()->quit();
+    grammar1 = Grammar1;
+    grammar2 = Grammar2;
+    wordLength = Words_Lenght;
+    wordCount = Words_Count;
+    outputTextEdit = tE;
+}
+
+void CF_Analyzer::process()
+{
+    if(grammar1 == NULL || grammar2 == NULL)
+    {
+        emit finished();
+        return;
+    }
+    output = EquivalenceTest(*grammar1, *grammar2, wordLength, wordCount);
+    writeOutput();
+    emit finished();
 }
 
 void CF_Analyzer::stop()
 {
-    mutex.lock();
-    stopped = true;
-    mutex.unlock();
+    grammar1->~CF_Grammar();
+    grammar2->~CF_Grammar();
+    emit finished();
 }
 
 void CF_Analyzer::writeOutput()

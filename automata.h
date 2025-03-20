@@ -65,6 +65,8 @@ public:
     void initialize_keyword_begin();
     void initialize_sigma(const QStringList& S);
     CF_Grammar* parse(const QString& lang);
+    void grammar_add_any(const QString& left_part, const QStringList *allowed_sigma);
+    void grammar_add_any_plus(const QString& left_part, const QStringList *allowed_sigma);
 
 private:
 

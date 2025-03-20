@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include "automata.h"
+#include "waitingspinnerwidget.h"
+#include "QSidePanel/QSidePanel/PanelLeftSide.hpp"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -21,6 +23,8 @@ public:
 private slots:
     void save(const QString& text);
     QString load();
+
+    void stop_spinner();
 
     void on_Library_pB_clicked();
 
@@ -50,6 +54,8 @@ private slots:
 
     void on_sigma_lineEdit_textChanged(const QString &arg1);
 
+    void on_menu_pB_clicked();
+
 private:
     Ui::Diploma_MainWindow *ui;
 
@@ -60,6 +66,11 @@ private:
     int wordLength;
     int wordCount;
 
+    WaitingSpinnerWidget* spinner;
+
+    PanelLeftSide* panel_left;
+
+    QStringList pages = {"Главное меню", "Бесконечные задания", "Анализ эквивалентности"};
 };
 
 #endif // DIPLOMA_MAINWINDOW_H

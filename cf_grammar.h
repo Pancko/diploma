@@ -10,6 +10,7 @@
 #include <QSet>
 #include <QMap>
 #include <QJsonDocument>
+#include <QThread>
 
 // Правило из КС-грамматики
 struct Rule

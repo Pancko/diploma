@@ -251,6 +251,9 @@ void CF_Grammar::ModRule(int index, const QString &str)
 
 void CF_Grammar::AnalyzeNonTerminals()
 {
+    if (starting_non_terminal.isEmpty() && rules.size() != 0)
+        starting_non_terminal = rules[0].left_part;
+
     GenerateBasicPathes();
 
     FindingBadNonTerminals();
@@ -968,6 +971,8 @@ QVector<QString> CF_Grammar::GenerateMultipleWords(int Amount, int Max_Length)
     int iterations = 0;
     int words_size;
     QString temp_str;
+
+    if(rules.empty()) return result;
 
     while (words.size() < Amount)
     {

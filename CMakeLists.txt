@@ -27,6 +27,11 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
         automata.h automata.cpp
         regExPlus.h regExPlus.cpp
         cf_analyzer.h cf_analyzer.cpp
+        cf_analyzer_session.h cf_analyzer_session.cpp
+        waitingspinnerwidget.h
+        waitingspinnerwidget.cpp
+        QSidePanel/q_side_panel.pri
+        QSidePanel/QSidePanel/math.cpp QSidePanel/QSidePanel/math.hpp QSidePanel/QSidePanel/PanelBottomSide.cpp QSidePanel/QSidePanel/PanelBottomSide.hpp QSidePanel/QSidePanel/PanelLeftSide.cpp QSidePanel/QSidePanel/PanelLeftSide.hpp QSidePanel/QSidePanel/PanelRightSide.cpp QSidePanel/QSidePanel/PanelRightSide.hpp QSidePanel/QSidePanel/PanelTopSide.cpp QSidePanel/QSidePanel/PanelTopSide.hpp QSidePanel/QSidePanel/side_panel_helpers.cpp QSidePanel/QSidePanel/side_panel_helpers.hpp QSidePanel/QSidePanel/SidePanel.cpp QSidePanel/QSidePanel/SidePanel.hpp QSidePanel/QSidePanel/SidePanelState.cpp QSidePanel/QSidePanel/SidePanelState.hpp
 
     )
 # Define target properties for Android with Qt 6 as:
