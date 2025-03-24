@@ -78,7 +78,7 @@ private:
     QMap<QChar, int> keyword_begin;
     //
     QVector<int> prev_states;
-    QVector<Letter> current_block;
+    QVector<sLetter> current_block;
     QStack<QPair<QString, int>> blocks_stack;
     QVector<QString> sub_strs;
 

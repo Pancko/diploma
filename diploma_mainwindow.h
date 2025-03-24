@@ -1,6 +1,7 @@
 #ifndef DIPLOMA_MAINWINDOW_H
 #define DIPLOMA_MAINWINDOW_H
 
+#include <QObject>
 #include <QMainWindow>
 #include "automata.h"
 #include "waitingspinnerwidget.h"

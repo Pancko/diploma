@@ -1,6 +1,6 @@
 // ТВГУ ПМиК ФИиИТ 2024
 // Андреев Семен Витальевич
-#include "CF_Grammar.h"
+#include "cf_grammar.h"
 #include <QList>
 #include <QDebug>
 #include <QtAlgorithms>
@@ -34,20 +34,24 @@ void CF_Grammar::clear()
         v.clear();
         v.squeeze();
     }
-    for(QString& s : non_terminals.keys())
-    {
-        s.clear();
-        s.squeeze();
-    }
+    // for(const QString& s : non_terminals.keys())
+    // {
+    //     s.clear();
+    //     s.squeeze();
+    // }
     non_terminals.clear();
 
-    for (Path& p : shortest_path)
-        p.clear();
-    for(QString& s : shortest_path.keys())
-    {
-        s.clear();
-        s.squeeze();
+    // for (Path& p : shortest_path)
+    //     p.clear();
+    for (auto it = shortest_path.begin(); it != shortest_path.end(); ++it) {
+        it.value().clear();
     }
+
+    // for(const QString& s : shortest_path.keys())
+    // {
+    //     s.clear();
+    //     s.squeeze();
+    // }
     shortest_path.clear();
 
 
@@ -446,9 +450,9 @@ void CF_Grammar::GeneratePathes()
     for (Rule& i_rule : rules) // Базис. Заполнить массив правил
     {
         pathes.push_back(PathPermutations(i_rule));
-
-        for (QString i_string : i_rule.right_part)
-            pathes[IndexOfRule(i_rule)].right_part.push_back(QPair<QString, QVector<QString>>(i_string, QVector<QString>()));
+        int index = IndexOfRule(i_rule);
+        for (const QString &i_string : std::as_const(i_rule.right_part))
+            pathes[index].right_part.emplace_back(i_string, QVector<QString>());
 
         if (!GotNonTerminal(i_rule.right_part)) // Если правило порождает нетерминальное слово
         {
@@ -653,7 +657,7 @@ void CF_Grammar::DeleteBadNonTerminals()
     QMap<QString, QVector<Path>> new_non_terminals = non_terminals;
     QVector<Rule> new_rules = rules;
 
-    for (const QString& i_string : bad_non_terminals)
+    for (const QString& i_string : std::as_const(bad_non_terminals))
     {
         new_non_terminals.remove(i_string);
 
@@ -760,7 +764,7 @@ QString CF_Grammar::PrintGrammar(bool IsDebug, bool ShowPath)
 
     counter = 0;
     debugMsg += "\nTerminals:\n";
-    for (const QString& i_string : terminals)
+    for (const QString& i_string : std::as_const(terminals))
     {
         debugMsg += i_string;
         if (counter != terminals.size() - 1)
@@ -788,7 +792,7 @@ QString CF_Grammar::PrintGrammar(bool IsDebug, bool ShowPath)
     if (bad_non_terminals.size() > 0)
     {
         debugMsg += ": ";
-        for (const QString& i_string : bad_non_terminals)
+        for (const QString& i_string : std::as_const(bad_non_terminals))
         {
             debugMsg += i_string;
             if (counter != bad_non_terminals.size() - 1)
@@ -804,7 +808,7 @@ QString CF_Grammar::PrintGrammar(bool IsDebug, bool ShowPath)
         debugMsg += "Pathes:\n";
         for (auto [key, value] : non_terminals.asKeyValueRange())
         {
-            for (Path i_path : value)
+            for (Path i_path : std::as_const(value))
                 debugMsg += i_path.PrintPath();
         }
     }
@@ -1015,7 +1019,7 @@ void CF_Grammar::PrintWords(bool IsDebug)
 {
     QString debugMsg;
     if (IsDebug)
-        for (const QString& i_string : words)
+        for (const QString& i_string : std::as_const(words))
         {
             debugMsg += "word = " + i_string + ", length = " + QString::number(i_string.length()) + '\n';
         }
@@ -1054,7 +1058,7 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
         for(int j = 0; j < 2 * word.size() + 1; j++)
             a[key][j].resize(2 * word.size() + 1);
     }
-    for(const QString& key : terminals){
+    for(const QString& key : std::as_const(terminals)){
         a.insert(key, QVector<QVector<bool>>());
         a[key].resize(2 * word.size() + 1);
         for(int j = 0; j < 2 * word.size() + 1; j++)
@@ -1068,7 +1072,7 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
 
     // h[A -> alpha][i][j][k] = true, если из префикса длины k правила A -> alpha можно вывести подстроку word[i...j - 1]
     QMap<Rule, QVector<QVector<QVector<bool>>>> h;
-    for(const Rule& key : rules){
+    for(const Rule& key : std::as_const(rules)){
         h.insert(key, QVector<QVector<QVector<bool>>>());
         h[key].resize(2 * word.size() + 1);
         for (int j = 0; j < 2 * word.size() + 1; j++){
@@ -1109,7 +1113,7 @@ bool CF_Grammar::CYK_Alg_Modified(const QString& Word)
         }
         if (a[starting_non_terminal][0][Word.size()]) return true;
         // Выводимость терминалов
-        for (const QString& i_string : terminals)
+        for (const QString& i_string : std::as_const(terminals))
         {
             if (i < word.size() && word[i] == i_string[0] && i_string != "[EPS]")
                 a[i_string][i][i + 1] = true;
@@ -1277,7 +1281,7 @@ bool Path::operator+=(const Path& Object)
     Path new_path;
     new_path = *this;
     length += Object.length;
-    for (Rule i_rule : Object.path_rules)
+    for (const Rule &i_rule : Object.path_rules)
     {
         new_path.path_rules.push_back(i_rule);
         new_path.word = ApplyRule(new_path.word, i_rule, 0);
@@ -1300,7 +1304,7 @@ Path Path::ApplyPath(const Path& Object, int position)
     Path obj = Object;
     new_path.length += Object.length;
     //new_path.pathes_used.push_back(Object);
-    for (Rule i_rule : Object.path_rules)
+    for (const Rule &i_rule : Object.path_rules)
     {
         for (pos = 0; pos < std::min(obj.path_words[place].size(), obj.path_words[place + 1].size()); pos++)
         {
@@ -1324,14 +1328,14 @@ QString Path::PrintPath(bool IsDebug)
     {
         if (i != path_words.size() - 1)
         {
-            for (QString i_string : path_words[i])
+            for (const QString &i_string : std::as_const(path_words[i]))
             {
                 debugMsg += i_string;
             }
             debugMsg += " -> ";
         }
         else
-            for (QString i_string : this->word)
+            for (const QString &i_string : std::as_const(this->word))
                 debugMsg += i_string;
     }
     debugMsg += " size = " + QString::number(this->word.size()) + '\n';
@@ -1352,7 +1356,7 @@ Path::~Path()
     path_rules.clear();
     path_rules.squeeze();
 
-    for(QVector<QString> v : path_words)
+    for(QVector<QString> &v : path_words)
     {v.clear(); v.squeeze();}
     path_words.clear();
     path_words.squeeze();
@@ -1368,7 +1372,7 @@ void Path::clear()
     path_rules.clear();
     path_rules.squeeze();
 
-    for(QVector<QString> v : path_words)
+    for(QVector<QString> &v : path_words)
     {v.clear(); v.squeeze();}
     path_words.clear();
     path_words.squeeze();
@@ -1468,7 +1472,7 @@ QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, 
         words.clear();
         words = grammar1.GetWords();
 
-        for (const QString& i_string : words)
+        for (const QString& i_string : std::as_const(words))
         {
             temp_bool = grammar2.CYK_Alg_Modified(i_string);
             if (!temp_bool)
@@ -1511,7 +1515,7 @@ QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, 
 
         words = grammar2.GetWords();
 
-        for (const QString& i_string : words)
+        for (const QString& i_string : std::as_const(words))
         {
             temp_bool = grammar1.CYK_Alg_Modified(i_string);
             if (!temp_bool)

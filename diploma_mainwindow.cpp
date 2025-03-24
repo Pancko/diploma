@@ -41,6 +41,9 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
 
 Diploma_MainWindow::~Diploma_MainWindow()
 {
+    delete languageCFG;
+    delete spinner;
+    delete panel_left;
     delete ui;
 }
 
@@ -155,7 +158,7 @@ void Diploma_MainWindow::save(const QString& text)
         while(array.count()) {
             array.pop_back();
         }
-        for (const QString& str : terms)
+        for (const QString& str : std::as_const(terms))
         {
             array.append(str);
         }
@@ -284,7 +287,7 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
 
         generatedCFG->GenerateMultipleWords(50, 10);
         QSet<QString> words = generatedCFG->GetWords();
-        for (const QString &word : words)
+        for (const QString &word : std::as_const(words))
             ui->langCFG_textEdit->append(word);
     }
     else

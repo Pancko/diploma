@@ -9,7 +9,7 @@ Automata::Automata() {
 
 Automata::~Automata()
 {
-    delete[] &table;
+    // delete[] &table;
     detect_table.clear();
     detect_table.squeeze();
     keyword_begin.clear();
@@ -343,7 +343,7 @@ int Automata::KeywordFound()
         current_block.last().addPow(keyword);
     }
     if (st == S_BLOCKBRWAITINGPOW && keyword.contains("</sup>")){
-        struct Letter l;
+        sLetter l;
         QStringList variants {"+", "*"};
         Rule new_rule;
         l.addPow(keyword);
@@ -505,7 +505,7 @@ int Automata::BlockLetter()
         if(current_block.last().value != token.val)
             st = BlockAnalyze();
     }
-    struct Letter l;
+    sLetter l;
     l.value = token.val;
     current_block.push_back(l);
     return st;
@@ -519,7 +519,7 @@ int Automata::BlockDigit()
 
 int Automata::BlockAnalyze()
 {
-    struct Letter l;
+    sLetter l;
     QStringList variants {"+", "*"};
     int rule_pos = 0;
     bool s_weq = prev_states.contains(S_WEQ);
@@ -655,7 +655,7 @@ int Automata::BlockAnalyze()
                     resultGrammar.AddRule(new_rule);
 
                     new_rule.right_part.clear();
-                    for (const QString &str: sigma)
+                    foreach(QString str, sigma)
                     {
                         if (str != l.value)
                         {

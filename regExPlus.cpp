@@ -1,6 +1,6 @@
 #include "regExPlus.h"
 
-Letter::Letter()
+sLetter::sLetter()
 {
     value = nullptr;
     havePow = false;
@@ -9,7 +9,7 @@ Letter::Letter()
     chPow = nullptr;
 }
 
-Letter::Letter(const QString& in)
+sLetter::sLetter(const QString& in)
 {
     value = in;
     if (!in.contains("<sup>"))
@@ -50,7 +50,7 @@ Letter::Letter(const QString& in)
     }
 }
 
-void Letter::addPow(const QString &in)
+void sLetter::addPow(const QString &in)
 {
     havePow = true;
     QStringList variants {"+", "*"};
@@ -81,10 +81,10 @@ void Letter::addPow(const QString &in)
     }
 }
 
-int combineInBlock(QVector<Letter>& block, int pos)
+int combineInBlock(QVector<sLetter>& block, int pos)
 {
-    Letter *first = &block[pos - 1];
-    Letter *second = &block[pos];
+    sLetter *first = &block[pos - 1];
+    sLetter *second = &block[pos];
     if (!first->havePow && !second->havePow){
         first->havePow = true;
         first->isIntPow = true;
@@ -187,7 +187,7 @@ QString reduce(const QString& lang, const QStringList& sigma)
 {
     QString ch;
     QString result = "L = {w ∈ ∑<sup>*</sup> : ";
-    QVector<Letter> block;
+    QVector<sLetter> block;
     for(int i = result.size(); i < lang.size(); i++)
     {
         ch = lang[i];
@@ -200,11 +200,11 @@ QString reduce(const QString& lang, const QStringList& sigma)
                 if(lang[pos] != ch) break;
                 if(lang[pos + 1] == '<'){
                     QString temp = lang.mid(pos, lang.indexOf("</sup>", pos) - pos + 6);
-                    block.push_back(Letter(temp));
+                    block.push_back(sLetter(temp));
                     pos = lang.indexOf("</sup>", pos) + 6;
                 }
                 else {
-                    block.push_back(Letter(ch));
+                    block.push_back(sLetter(ch));
                     pos++;
                 }
             }
@@ -227,7 +227,7 @@ QString reduce(const QString& lang, const QStringList& sigma)
                 {
                     j = combineInBlock(block, j);
                 }
-                for (Letter &l: block)
+                for (sLetter &l: block)
                 {
                     if (!l.havePow)
                         result += l.value;

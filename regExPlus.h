@@ -4,7 +4,7 @@
 #include <QString>
 #include <QStringList>
 
-struct Letter
+struct sLetter
 {
     QString value;
     bool havePow;
@@ -12,13 +12,13 @@ struct Letter
     int intPow;
     QString chPow;
 
-    Letter();
-    Letter(const QString& in);
+    sLetter();
+    sLetter(const QString& in);
 
     void addPow(const QString& in);
 };
 
-int combineInBlock(QVector<Letter> &block, int pos);
+int combineInBlock(QVector<sLetter> &block, int pos);
 QString reduce(const QString &language, const QStringList &sigma);
 
 #endif // REGEXPLUS_H
