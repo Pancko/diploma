@@ -8,14 +8,14 @@
 #include <QJsonObject>
 #include <QThread>
 #include "regExPlus.h"
-#include "cf_analyzer_session.h"
 
 Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Diploma_MainWindow)
 {
     ui->setupUi(this);
-    languageCFG = new CF_Grammar();
+    languageCFG = new CF_Grammar(this);
+    automata = new Automata(this);
     spinner = new WaitingSpinnerWidget(ui->output_textEdit);
 
     ui->stackedWidget->setCurrentWidget(ui->mainMenu_page);
@@ -41,10 +41,13 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
 
 Diploma_MainWindow::~Diploma_MainWindow()
 {
-    delete languageCFG;
-    delete spinner;
-    delete panel_left;
     delete ui;
+    // if (languageCFG != NULL)
+    //     delete languageCFG;
+    // if (generatedCFG != NULL)
+    //     delete generatedCFG;
+    // delete spinner;
+    // delete panel_left;
 }
 
 void Diploma_MainWindow::on_Library_pB_clicked()
@@ -70,8 +73,8 @@ void Diploma_MainWindow::on_InfiniteTasks_pB_clicked()
 
 void Diploma_MainWindow::on_Compare_pB_clicked()
 {
-    CF_Grammar *grammar1 = new CF_Grammar();
-    CF_Grammar *grammar2 = new CF_Grammar();
+    CF_Grammar *grammar1 = new CF_Grammar(this);
+    CF_Grammar *grammar2 = new CF_Grammar(this);
     QString str1 = ui->grammar1_textEdit->toPlainText();
     QString str2 = ui->grammar2_textEdit->toPlainText();
     QString error;
@@ -92,12 +95,14 @@ void Diploma_MainWindow::on_Compare_pB_clicked()
     if (!errorFound){
         ui->output_textEdit->append(grammar1->PrintGrammar(isDebug, isPath));
         ui->output_textEdit->append(grammar2->PrintGrammar(isDebug, isPath));
-        CF_Session *session = new CF_Session();
+
+        CF_Session* session = new CF_Session();
         spinner->start();
         ui->clearOutput_pB->setDisabled(1);
         ui->Compare_pB->setDisabled(1);
         session->addThread(grammar1, grammar2, wordLength, wordCount,  ui->output_textEdit);
         connect(session, SIGNAL(stopAll()), this, SLOT(stop_spinner()));
+        connect(session, SIGNAL(stopSpin()), this, SLOT(stop_spinner()));
     } else
         ui->output_textEdit->append("=========================\n");
 }
@@ -188,7 +193,8 @@ void Diploma_MainWindow::save(const QString& text)
 QString Diploma_MainWindow::load()
 {
     QString result;
-    QString directory = QFileDialog::getOpenFileName(this, "Выбрать файл", QDir::currentPath() + "/Data/Saves", "(*.txt *.json)");
+    QString directory = QFileDialog::getOpenFileName(this, "Выбрать файл", QDir::currentPath() + "/Data/Saves", "(*.txt *.json)"
+                                                     ,0,QFileDialog::DontUseNativeDialog);
 
     if (!directory.isEmpty())
     {
@@ -277,8 +283,8 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         }
         qDebug() << language.first << Qt::endl;                             ////////////////////////////////////////
         ui->language_Label->setText("Язык: " + language.first);
-        automata.initialize_sigma(sigma);
-        generatedCFG = automata.parse(language.first);
+        automata->initialize_sigma(sigma);
+        generatedCFG = automata->parse(language.first);
         // ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(0,0));
         generatedCFG->AnalyzeNonTerminals();
         ui->langCFG_textEdit->setText(/*ui->langCFG_textEdit->toPlainText() + */generatedCFG->PrintGrammar(0,0));

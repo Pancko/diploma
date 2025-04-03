@@ -27,7 +27,7 @@ struct Rule
 
     Rule();
     Rule(QString Left_Part, QVector<QString> Right_Part, int Complexity = 0);
-    ~Rule();
+    ~Rule();// = default;
     void clear();
 };
 
@@ -46,7 +46,7 @@ struct Path
     QString PrintPath(bool IsDebug = false);
 
     Path();
-    ~Path();
+    ~Path();// = default;
     void clear();
 };
 
@@ -57,13 +57,14 @@ struct PathPermutations
     QVector<QPair<QString, QVector<QString>>> right_part;
 public:
     PathPermutations(Rule _rule) { rule = _rule; }
-    ~PathPermutations();
+    ~PathPermutations();// = default;
     void clear();
 };
 
 // Основной класс - КС-грамматика
-class CF_Grammar
+class CF_Grammar: public QObject
 {
+    Q_OBJECT
 private:
     QString starting_non_terminal;					// S
     QMap<QString, QVector<Path>> non_terminals;     // N
@@ -75,8 +76,8 @@ private:
     QSet<QString> words;							// Сгенерированныые слова
 
 public:
-    CF_Grammar();
-    ~CF_Grammar();
+    explicit CF_Grammar(QObject *parent = 0);
+    ~CF_Grammar();// = default;
     void clear();
 
     // Получить поля
@@ -159,6 +160,6 @@ QMap<QString, QVector<Path>> PathConvergence(const QMap<QString, QVector<Path>>&
 bool VecContStr(const QVector<QString>& Vector, const QString& String);
 
 // Генерация и проверка выводимости слов в двух грамматиках методом Кока-Янгера-Касами
-QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, int Words_Lenght = 10, int Words_Count = 10);
+QString EquivalenceTest(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words_Lenght = 10, int Words_Count = 10);
 
 #endif // CF_GRAMMAR_H

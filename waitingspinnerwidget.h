@@ -44,6 +44,9 @@ public:
                          QWidget *parent = 0,
                          bool centerOnParent = true,
                          bool disableParentWhenSpinning = true);
+    ~WaitingSpinnerWidget() {
+        delete _timer; // Удаляем таймер, созданный в конструкторе
+    }
 
 public slots:
     void start();

@@ -52,11 +52,12 @@ struct SymbolicToken
     QChar val;
 };
 
-class Automata
+class Automata: public QObject
 {
+    Q_OBJECT
 public:
 
-    Automata();
+    explicit Automata(QObject *parent = 0);
     ~Automata();
 
     SymbolicToken transliterator(const QChar& symbol);
@@ -86,7 +87,7 @@ private:
 
     SymbolicToken token;      // Токены для транслитерации
 
-    CF_Grammar resultGrammar;
+    CF_Grammar* resultGrammar;
     QChar prev_symbol;
     QString keyword;
     int state;

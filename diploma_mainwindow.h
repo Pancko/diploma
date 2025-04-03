@@ -6,6 +6,7 @@
 #include "automata.h"
 #include "waitingspinnerwidget.h"
 #include "QSidePanel/QSidePanel/PanelLeftSide.hpp"
+#include "cf_analyzer_session.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -60,7 +61,7 @@ private slots:
 private:
     Ui::Diploma_MainWindow *ui;
 
-    Automata automata;
+    Automata* automata;
     CF_Grammar* languageCFG;
     CF_Grammar* generatedCFG;
 

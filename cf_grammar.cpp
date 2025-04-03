@@ -8,7 +8,8 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
-CF_Grammar::CF_Grammar()
+CF_Grammar::CF_Grammar(QObject *parent):
+    QObject(parent)
 {
     non_terminals = QMap<QString, QVector<Path>>();
     shortest_path = QMap<QString, Path>();
@@ -1244,12 +1245,7 @@ Rule::Rule(QString Left_Part, QVector<QString> Right_Part, int Complexity)
 
 Rule::~Rule()
 {
-    terminals_count = 0;
-    complexity = 0;
-    left_part.clear();
-    left_part.squeeze();
-    right_part.clear();
-    right_part.squeeze();
+    clear();
 }
 
 void Rule::clear()
@@ -1350,18 +1346,7 @@ Path::Path()
 
 Path::~Path()
 {
-    length = 0;
-    for(Rule& r : path_rules)
-        r.clear();
-    path_rules.clear();
-    path_rules.squeeze();
-
-    for(QVector<QString> &v : path_words)
-    {v.clear(); v.squeeze();}
-    path_words.clear();
-    path_words.squeeze();
-    word.clear();
-    word.squeeze();
+    clear();
 }
 
 void Path::clear()
@@ -1445,10 +1430,10 @@ bool VecContStr(const QVector<QString>& Vector, const QString& String)
 }
 
 //=============== Генерация и проверка слов двух грамматик =================================================
-QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, int Words_Lenght, int Words_Count)
+QString EquivalenceTest(CF_Grammar* grammar1, CF_Grammar* grammar2, int Words_Lenght, int Words_Count)
 {
-    CF_Grammar grammar1 = Grammar1;
-    CF_Grammar grammar2 = Grammar2;
+    // CF_Grammar *grammar1 = Grammar1;
+    // CF_Grammar grammar2 = Grammar2;
 
     QSet<QString> words;
     QVector<QString> incorrect_words;
@@ -1468,13 +1453,13 @@ QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, 
     {
         debugMsg += "\nGenerating " + QString::number(number_of_words) + " words in 1 grammar...\n";
         temp_float = 0;
-        grammar1.GenerateMultipleWords(number_of_words, Words_Lenght);
+        grammar1->GenerateMultipleWords(number_of_words, Words_Lenght);
         words.clear();
-        words = grammar1.GetWords();
+        words = grammar1->GetWords();
 
         for (const QString& i_string : std::as_const(words))
         {
-            temp_bool = grammar2.CYK_Alg_Modified(i_string);
+            temp_bool = grammar2->CYK_Alg_Modified(i_string);
             if (!temp_bool)
                 incorrect_words.push_back(i_string);
             else
@@ -1511,13 +1496,13 @@ QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, 
     {
         debugMsg += "\nGenerating " + QString::number(number_of_words) + " words in 2 grammar...\n";
         temp_float = 0;
-        grammar2.GenerateMultipleWords(number_of_words, Words_Lenght);
+        grammar2->GenerateMultipleWords(number_of_words, Words_Lenght);
 
-        words = grammar2.GetWords();
+        words = grammar2->GetWords();
 
         for (const QString& i_string : std::as_const(words))
         {
-            temp_bool = grammar1.CYK_Alg_Modified(i_string);
+            temp_bool = grammar1->CYK_Alg_Modified(i_string);
             if (!temp_bool)
                 incorrect_words.push_back(i_string);
             else
@@ -1553,16 +1538,7 @@ QString EquivalenceTest(const CF_Grammar& Grammar1, const CF_Grammar& Grammar2, 
 
 PathPermutations::~PathPermutations()
 {
-    rule.clear();
-    for(QPair<QString, QVector<QString>>& pair : right_part)
-    {
-        pair.first.clear();
-        pair.first.squeeze();
-        pair.second.clear();
-        pair.second.squeeze();
-    }
-    right_part.clear();
-    right_part.squeeze();
+    clear();
 }
 
 void PathPermutations::clear()

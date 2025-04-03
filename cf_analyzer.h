@@ -13,18 +13,17 @@ private:
     CF_Grammar *grammar2;
     int wordLength;
     int wordCount;
-    QTextEdit* outputTextEdit;
 public:
-    QString output;
-    void setLocals(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words_Lenght, int Words_Count, QTextEdit* tE);
-    CF_Analyzer();
-    CF_Analyzer(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words_Lenght, int Words_Count, QTextEdit* tE);
-    void writeOutput();
+    void setLocals(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words_Lenght, int Words_Count);
+    CF_Analyzer(QObject *parent = 0);
+    CF_Analyzer(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words_Lenght, int Words_Count);
+    ~CF_Analyzer();
 public slots:
     void process();
     void stop();
 signals:
     void finished();
+    void updateText(const QString& text);
 };
 
 #endif // CF_ANALYZER_H
