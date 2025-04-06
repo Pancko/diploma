@@ -6,6 +6,8 @@
 
 struct sLetter
 {
+    QVector<sLetter> brackets;
+    bool isBrackets;
     QString value;
     bool havePow;
     bool isIntPow;

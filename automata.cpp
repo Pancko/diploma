@@ -10,7 +10,6 @@ Automata::Automata(QObject *parent): QObject(parent)
 
 Automata::~Automata()
 {
-    // delete[] &table;
     detect_table.clear();
     detect_table.squeeze();
     keyword_begin.clear();
@@ -192,13 +191,14 @@ void Automata::initialize_detect_table()
 
 CF_Grammar* Automata::parse(const QString& lang)
 {
+    language = lang;
     resultGrammar->clear();
 
     prev_states.clear();
     prev_states.squeeze();
 
-    current_block.clear();
-    current_block.squeeze();
+    current_block->clear();
+    current_block->squeeze();
 
     sub_strs.clear();
     sub_strs.squeeze();
@@ -208,6 +208,11 @@ CF_Grammar* Automata::parse(const QString& lang)
 
     keyword.clear();
     keyword.squeeze();
+
+    blocks.clear();
+    blocks.squeeze();
+
+    current_block = &blocks;
 
     state = 0;
     keyw_detection = 0;
@@ -220,7 +225,7 @@ CF_Grammar* Automata::parse(const QString& lang)
     QChar symbol;
     prev_symbol = symbol;
 
-    int pos = lang.indexOf("L = {w ∈ ∑<sup>*</sup> : ");
+    pos = lang.indexOf("L = {w ∈ ∑<sup>*</sup> : ");
     if (pos == -1) throw "Неправильный язык";
     pos += 25;
     state = S_START;
@@ -242,11 +247,6 @@ CF_Grammar* Automata::parse(const QString& lang)
         qDebug() << "State2: " << debugState(state);
 
         pos++;
-
-        // if(current_block.isEmpty())
-        //     qDebug() << "BLOCK EMPTY";
-        // else
-        //     qDebug() << "BLOCK" << current_block[0].value;
     }
 
     return resultGrammar;
@@ -258,8 +258,8 @@ void Automata::grammar_add_any(const QString& left_part, const QStringList *allo
     new_rule.left_part = left_part;
     for(const QString &str : *allowed_sigma)
     {
-        new_rule.right_part.push_back(new_rule.left_part);
         new_rule.right_part.push_back(str);
+        new_rule.right_part.push_back(new_rule.left_part);
         resultGrammar->AddRule(new_rule);
         new_rule.right_part.clear();
     }
@@ -275,21 +275,36 @@ void Automata::grammar_add_any_plus(const QString& left_part, const QStringList 
     new_rule.left_part = left_part;
     for(const QString &str : *allowed_sigma)
     {
-        new_rule.right_part.push_back(new_left_part);
         new_rule.right_part.push_back(str);
+        new_rule.right_part.push_back(new_left_part);
         resultGrammar->AddRule(new_rule);
         new_rule.right_part.clear();
     }
     new_rule.left_part = new_left_part;
     for(const QString &str : *allowed_sigma)
     {
-        new_rule.right_part.push_back(new_rule.left_part);
         new_rule.right_part.push_back(str);
+        new_rule.right_part.push_back(new_rule.left_part);
         resultGrammar->AddRule(new_rule);
         new_rule.right_part.clear();
     }
     new_rule.right_part.push_back("[EPS]");
     resultGrammar->AddRule(new_rule);
+}
+
+void Automata::grammar_add_int(const QString &left_part, const QStringList *allowed_sigma, int val_)
+{
+    Rule new_rule;
+    new_rule.left_part = left_part;
+
+    for(const QString &str : *allowed_sigma)
+    {
+        for(int j = 0; j < val_; j++){
+            new_rule.right_part.push_back(str);
+        }
+        resultGrammar->AddRule(new_rule);
+        new_rule.right_part.clear();
+    }
 }
 
 int Automata::KeywordStart()
@@ -339,78 +354,76 @@ int Automata::KeywordFound()
             break;
         prev_states.pop_back();
     }
-    if (st == S_BLOCK && keyword.contains("</sup>"))
-    {
-        current_block.last().addPow(keyword);
-    }
-    if (st == S_BLOCKBRWAITINGPOW && keyword.contains("</sup>")){
-        sLetter l;
-        QStringList variants {"+", "*"};
-        Rule new_rule;
-        l.addPow(keyword);
-        keyword.clear();
-        if (prev_states.contains(S_WEQ))
-        {
-            QString temp = blocks_stack.top().first;
-            new_rule.left_part = temp;
-            switch(variants.indexOf(l.chPow))
-            {
-            case -1: //число
-            {
-                temp = temp.insert(temp.indexOf(']'), "''");
-                for(int j = 0; j < l.intPow; j++)
-                    new_rule.right_part.push_back(temp);
-                resultGrammar->AddRule(new_rule);
-                break;
-            }
-            case 0: // +
-            {
-                //qDebug() << "POW + ";
-                temp = temp.insert(temp.indexOf(']'), "''");
-                new_rule.right_part.push_back(temp);
-                temp = blocks_stack.top().first;
-                temp = temp.insert(temp.indexOf(']'), "'");
-                new_rule.right_part.push_back(temp);
-                resultGrammar->AddRule(new_rule);
 
-                new_rule.clear();
-                temp = blocks_stack.top().first;
-                new_rule.left_part = temp.insert(temp.indexOf(']'), "'");
-                temp = blocks_stack.top().first;
-                new_rule.right_part.push_back(temp.insert(temp.indexOf(']'), "''"));
-                temp = blocks_stack.top().first;
-                new_rule.right_part.push_back(temp.insert(temp.indexOf(']'), "'"));
-                resultGrammar->AddRule(new_rule);
-
-                new_rule.right_part.clear();
-                new_rule.right_part.push_back("[EPS]");
-                resultGrammar->AddRule(new_rule);
-                break;
-            }
-            case 1: // *
-            {
-                //qDebug() << "POW * ";
-                new_rule.right_part.push_back(temp.insert(temp.indexOf(']'), "''"));
-                temp = blocks_stack.top().first;
-                new_rule.right_part.push_back(temp);
-                resultGrammar->AddRule(new_rule);
-
-                new_rule.right_part.clear();
-                new_rule.right_part.push_back("[EPS]");
-                resultGrammar->AddRule(new_rule);
-                break;
-            }
-            }
-            new_rule.clear();
-            temp = blocks_stack.top().first;
-            new_rule.left_part = temp.insert(temp.indexOf(']'), "''");
-            resultGrammar->AddRule(new_rule);
-            blocks_stack.top().second = resultGrammar->GetRules().indexOf(new_rule); // местонахождение нового порождающего блока (как нулевое правило S обычно)
-            st = BlockParse();
-        }
-    }
     if (keyword.contains("</sup>"))
+    {
+        current_block->end()->addPow(keyword);
         keyword.clear();
+    }
+
+    // if (st == S_BLOCK && keyword.contains("</sup>"))
+    // {
+    //     // current_block.last().addPow(keyword);
+    //     current_block->last().addPow(keyword);
+    // }
+    // if (st == S_BLOCKBRWAITINGPOW && keyword.contains("</sup>")){
+    //     // sLetter l;
+    //     // QStringList variants {"+", "*"};
+    //     // Rule new_rule;
+    //     current_block->end()->addPow(keyword);
+    //     // l.addPow(keyword);
+    //     keyword.clear();
+    //     //////////////////////////////////////////////////////////
+    //     // if (prev_states.contains(S_WEQ))
+    //     // {
+    //     //     QString temp = blocks_stack.top().first;
+    //     //     QString left_part = temp;
+    //     //     QString lit = temp.insert(temp.indexOf(']'), "br");
+    //     //     QStringList literal = {lit};
+    //     //     temp = "[" + QString::number(non_terminals) + "]";
+    //     //     new_rule.left_part = left_part;
+    //     //     new_rule.right_part.push_back(temp);
+
+    //     //     SymbolicToken t = token;
+    //     //     int temp_pos = pos + 1;
+    //     //     while(temp_pos < language.size() && language[temp_pos] == ' ')
+    //     //         temp_pos++;
+    //     //     if (temp_pos < language.size())
+    //     //         t = transliterator(language[temp_pos]);
+
+    //     //     if (!(t.tokenClass == T_END))  // в последнем блоке такого быть коненчо не должно
+    //     //         new_rule.right_part.push_back(QString("[>" + QString::number(non_terminals + 1) + "]"));
+
+    //     //     resultGrammar->AddRule(new_rule);
+
+    //     //     switch(variants.indexOf(l.chPow))
+    //     //     {
+    //     //     case -1: //число
+    //     //     {
+    //     //         grammar_add_int(temp, &literal, l.intPow);
+    //     //         break;
+    //     //     }
+    //     //     case 0: // +
+    //     //     {
+    //     //         grammar_add_any_plus(temp, &literal);
+    //     //         break;
+    //     //     }
+    //     //     case 1: // *
+    //     //     {
+    //     //         grammar_add_any(temp, &literal);
+    //     //         break;
+    //     //     }
+    //     //     }
+    //     //     new_rule.clear();
+    //     //     new_rule.left_part = lit;
+    //     //     resultGrammar->AddRule(new_rule);
+    //     //     blocks_stack.top().first = new_rule.left_part;
+    //     //     blocks_stack.top().second = resultGrammar->GetRules().indexOf(new_rule); // местонахождение нового порождающего блока (как нулевое правило S обычно)
+    //     //     st = BlockParse();
+    //     // }
+    // }
+    // if (keyword.contains("</sup>"))
+    //     keyword.clear();
 
     return st;
 }
@@ -501,14 +514,17 @@ int Automata::Palindrome()
 int Automata::BlockLetter()
 {
     int st = S_BLOCK;
-    if(!current_block.isEmpty())
-    {
-        if(current_block.last().value != token.val)
-            st = BlockAnalyze();
-    }
+    // if(!current_block.isEmpty())
+    // {
+    //     if(current_block.last().value != token.val)
+    //         st = BlockAnalyze();
+    // }
     sLetter l;
     l.value = token.val;
-    current_block.push_back(l);
+    // current_block.push_back(l);
+
+    current_block->push_back(l);
+
     return st;
 }
 
@@ -534,143 +550,69 @@ int Automata::BlockAnalyze()
         {
             Rule new_rule;
             l = current_block[i];
+            QStringList literal = {l.value};
+            QString left_part = "[" + QString::number(non_terminals + 1) + "]";
 
             if(non_terminals == 0)
             {
-                resultGrammar->AddRule(Rule("[0]", QVector<QString>({"[1]"})));
+                resultGrammar->AddRule(Rule("[0]", QVector<QString>({"[>1]"})));
                 if (s_wneq){
                     allowed_sigma.removeAll(l.value);
                     grammar_add_any("[0]", &allowed_sigma);
                 }
             }
-            else
-                resultGrammar->ModRule(rule_pos, QString("[" + QString::number(non_terminals + 1) + "]"));
+            if(rule_pos > 0) // Для скобок
+            {
+                Rule current_rule = resultGrammar->GetRules()[rule_pos];
+                QString temp = current_rule.left_part;
+                if(current_rule.right_part.empty())
+                    temp.insert(temp.indexOf(']'), "'");
+                else
+                {
+                    temp = current_rule.right_part.last();
+                    temp.insert(temp.indexOf(']'), "'");
+                }
 
-            non_terminals++;
+                resultGrammar->ModRule(rule_pos, temp);
+                left_part = temp;
+            }
+            else // делаем так, что каждый блок i имеет схему [>i]->[i][>i+1]
+            {
+                non_terminals++;
+                new_rule.left_part = QString("[>" + QString::number(non_terminals) + "]");
+                new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "]"));
 
+                if (!(token.tokenClass == T_END && i == current_block.size() - 1))  // в последнем блоке такого быть коненчо не должно
+                    new_rule.right_part.push_back(QString("[>" + QString::number(non_terminals + 1) + "]"));
+
+                resultGrammar->AddRule(new_rule);
+                new_rule.right_part.clear();
+                new_rule.left_part.clear();
+            }
             if (l.havePow)
             {
-                //qDebug() << "int pow = " << QString::number(l.intPow);
                 switch(variants.indexOf(l.chPow))
                 {
                 case -1: //число a^5 w!= a^5: [EPS],a,aa,aaa,aaaa,a^5Sigma+
                 {
-                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
-                    for(int j = 0; j < l.intPow; j++){
-                        new_rule.right_part.push_back(l.value);
-                        if (s_wneq){
-                            if (j == l.intPow - 1){
-                                QString new_left_part = new_rule.left_part;
-                                new_left_part.insert(new_left_part.size() - 1, "'");
-                                new_rule.right_part.push_back(new_left_part);
-                                grammar_add_any_plus(new_left_part, &sigma);
-                            }
-                            resultGrammar->AddRule(new_rule);
-                        }
-                    }
-                    if (!s_wneq)
-                        resultGrammar->AddRule(new_rule);
-                    else
-                    {
-                        new_rule.right_part.clear();
-                        new_rule.right_part.push_back("[EPS]");
-                    }
+                    grammar_add_int(left_part, &literal, l.intPow);
                     break;
                 }
                 case 0: // + w != a+: [EPS], if last: a+E+alpha*: E = sigma\a, alpha = sigma
                 {
-                    //qDebug() << "POW + ";
-                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
-                    new_rule.right_part.push_back(l.value);
-                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
-                    if(s_wneq && (i == current_block.size() - 1))
-                    {
-                        new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "'']"));
-                        new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "''']"));
-                        QStringList allowed_sigma = sigma;
-                        allowed_sigma.removeAll(l.value);
-                        grammar_add_any_plus(QString("[" + QString::number(non_terminals) + "'']"), &allowed_sigma);
-                        grammar_add_any(QString("[" + QString::number(non_terminals) + "''']"), &sigma);
-                    }
-                    resultGrammar->AddRule(new_rule);
-
-                    if (s_wneq)
-                    {
-                        new_rule.right_part.clear();
-                        new_rule.right_part.push_back("[EPS]");
-                        resultGrammar->AddRule(new_rule);
-                    }
-
-                    new_rule.clear();
-                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "']");
-                    new_rule.right_part.push_back(l.value);
-                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
-                    resultGrammar->AddRule(new_rule);
-
-                    new_rule.right_part.clear();
-                    new_rule.right_part.push_back("[EPS]");
-                    resultGrammar->AddRule(new_rule);
-
+                    grammar_add_any_plus(left_part, &literal);
                     break;
                 }
                 case 1: // * a^* w != a^*: aplha^+:alpha = sigma\a
                 {
-                    //qDebug() << "POW * ";
-                    new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
-                    new_rule.right_part.push_back(l.value);
-                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "]"));
-                    if(s_wneq)
-                    {
-                        if (i != current_block.size() - 1){
-                            resultGrammar->AddRule(new_rule);
-                            new_rule.right_part.clear();
-                        }
-                        new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
-                        QStringList allowed_sigma = sigma;
-                        allowed_sigma.removeAll(l.value);
-                        grammar_add_any_plus(QString("[" + QString::number(non_terminals) + "']"), &allowed_sigma);
-                    }
-                    resultGrammar->AddRule(new_rule);
-
-                    new_rule.right_part.clear();
-                    if(s_wneq && (i == current_block.size() - 1))
-                        new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
-                    else
-                        new_rule.right_part.push_back("[EPS]");
-                    resultGrammar->AddRule(new_rule);
-
+                    grammar_add_any(left_part, &literal);
                     break;
                 }
                 }
             }
-            else { // single character w=a w!=a: [EPS], a[Sigma]*, E[Sigma]*: E!=a
-                new_rule.left_part = QString("[" + QString::number(non_terminals) + "]");
-                new_rule.right_part.push_back(QString(l.value));
-                if (s_wneq)
-                {
-                    new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "']"));
-                    if (i == current_block.size() - 1)
-                        grammar_add_any_plus(QString("[" + QString::number(non_terminals) + "']"), &sigma);
-                    else
-                        grammar_add_any(QString("[" + QString::number(non_terminals) + "']"), &sigma);
-                    resultGrammar->AddRule(new_rule);
-
-                    new_rule.right_part.clear();
-                    foreach(QString str, sigma)
-                    {
-                        if (str != l.value)
-                        {
-                            new_rule.right_part.push_back(str);
-                            new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "'']"));
-                            grammar_add_any(QString("[" + QString::number(non_terminals) + "'']"), &sigma);
-                            new_rule.right_part.clear();
-                        }
-                    }
-
-                    new_rule.right_part.clear();
-                    new_rule.right_part.push_back("[EPS]");
-                }
-                resultGrammar->AddRule(new_rule);
+            else // single character w=a w!=a: [EPS], a[Sigma]+, E[Sigma]*: E!=a
+            {
+                grammar_add_int(left_part, &literal, 1);
             }
         }
     }
@@ -683,23 +625,39 @@ int Automata::BlockAnalyze()
 int Automata::BlockBracketsStart()
 {
     brackets++;
-    int st = 0;
-    if(!current_block.isEmpty())
+    sLetter l;
+    l.isBrackets = 1;
+    if(blocks.end()->isBrackets)
     {
-        st = BlockAnalyze();
+        current_block = &blocks.end()->brackets;
+        while(current_block->end()->isBrackets)
+            current_block = &current_block->end()->brackets;
+        current_block->push_back(l);
+        current_block = &current_block->end()->brackets;
     }
-    if (st == S_END) return S_END;
-    if(resultGrammar->GetRules().isEmpty())
-        resultGrammar->AddRule(Rule("[0]", QVector<QString>({QString("[Br" + QString::number(non_terminals + 1) + "]")})));
-    else{
-        if  (str_layer == 0)
-            resultGrammar->ModRule(0, QString("[Br" + QString::number(non_terminals + 1) + "]"));
-        else{
-            resultGrammar->ModRule(blocks_stack[str_layer - 1].second, QString("[Br" + QString::number(non_terminals + 1) + "]"));
-        }
-    }
-    blocks_stack.push(QPair<QString, int>(QString("[Br" + QString::number(non_terminals + 1) + "]"), -1));
-    non_terminals++;
+    else
+        blocks.push_back(l);
+    // int st = 0;
+    // if(!current_block.isEmpty())
+    // {
+    //     st = BlockAnalyze();
+    // }
+    // if (st == S_END) return S_END;
+    // QString temp = "[>" + QString::number(non_terminals + 1) + "]";
+    // if(resultGrammar->GetRules().isEmpty())
+    //     resultGrammar->AddRule(Rule("[0]", QVector<QString>({QString("[>" + QString::number(non_terminals + 1) + "]")})));
+    // else{
+    //     if  (str_layer != 0){ // == 0
+    //         //resultGrammar->ModRule(0, QString("[>" + QString::number(non_terminals + 1) + "br]"));
+    //     //else{
+    //         temp = blocks_stack[str_layer - 1].first;
+    //         temp.insert(temp.indexOf('>'), ">");
+    //         resultGrammar->ModRule(blocks_stack[str_layer - 1].second, temp);
+    //     }
+    // }
+    // //blocks_stack.push(QPair<QString, int>(QString("[>" + QString::number(non_terminals + 1) + "]"), -1));
+    // blocks_stack.push(QPair<QString, int>(temp, -1));
+    // non_terminals++;
     return S_BLOCKBRACKETS;
 }
 
@@ -709,9 +667,13 @@ int Automata::BlockBracketsFollow()
         sub_strs.resize(brackets);
     for (int i = 0; i < brackets; i++)
         sub_strs[i] += token.val;
-    if (token.tokenClass == T_LEFTROUNDBR)
-        brackets++;
-    return S_BLOCKBRACKETS;
+    switch(token.tokenClass)
+    {
+    case T_LEFTROUNDBR: return BlockBracketsStart();
+    case T_LETTER: return BlockLetter();
+    case T_LESS: return KeywordStart();
+    default: return S_BLOCKBRACKETS;
+    }
 }
 
 int Automata::BlockBracketsEnd()

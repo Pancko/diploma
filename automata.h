@@ -66,10 +66,14 @@ public:
     void initialize_keyword_begin();
     void initialize_sigma(const QStringList& S);
     CF_Grammar* parse(const QString& lang);
-    void grammar_add_any(const QString& left_part, const QStringList *allowed_sigma);
-    void grammar_add_any_plus(const QString& left_part, const QStringList *allowed_sigma);
+    void grammar_add_any(const QString& left_part, const QStringList *allowed_sigma);           // Добавляет в грамматику правила вида: left_part -> allowed_sigma*
+    void grammar_add_any_plus(const QString& left_part, const QStringList *allowed_sigma);      // Добавляет в грамматику правила вида: left_part -> allowed_sigma+
+    void grammar_add_int(const QString& left_part, const QStringList *allowed_sigma, int val_); // Добавляет в грамматику правила вида: left_part -> allowed_sigma^val_
 
 private:
+
+    int pos = 0; // Текущая позиция лексического анализатора
+    QString language;
 
     const static int state_number = S_END; // Число состояний (без S_END)
     const static int tokens_number = T_END + 1; // Число возможных токенов
@@ -79,8 +83,9 @@ private:
     QMap<QChar, int> keyword_begin;
     //
     QVector<int> prev_states;
-    QVector<sLetter> current_block;
-    QStack<QPair<QString, int>> blocks_stack;
+    QVector<sLetter> *current_block;   // Текущий блок куда записываются подблоки //Подряд идущие блоки одинаковых букв, например вида: a<sup>2</sup>a<sup>*</sup>
+    QStack<QPair<QString, int>> blocks_stack; // Порождающие блоки вида <[1] - левая часть правила, 2 - номер правила в грамматике>,
+    QVector<sLetter> blocks; // Последовательно идущие блоки
     QVector<QString> sub_strs;
 
     QStringList sigma;

@@ -32,6 +32,7 @@ void CF_Analyzer::process()
 {
     if(grammar1 == NULL || grammar2 == NULL)
     {
+        emit updateText("");
         emit finished();
         return;
     }

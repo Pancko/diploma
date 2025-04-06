@@ -42,12 +42,6 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
 Diploma_MainWindow::~Diploma_MainWindow()
 {
     delete ui;
-    // if (languageCFG != NULL)
-    //     delete languageCFG;
-    // if (generatedCFG != NULL)
-    //     delete generatedCFG;
-    // delete spinner;
-    // delete panel_left;
 }
 
 void Diploma_MainWindow::on_Library_pB_clicked()
@@ -274,7 +268,7 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         QPair<QString, int> language = languageCFG->GenerateWord(difficulty * 10);
         while((language.second < (difficulty - 1) * 10) || (language.second > difficulty * 10))
             language = languageCFG->GenerateWord(difficulty * 10);
-        qDebug() << language.first;                                         ////////////////////////////
+        qDebug() << language.first;                                         ////////////////////////////////////////
         QString temp;
         while(temp != language.first)
         {
@@ -285,16 +279,31 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         ui->language_Label->setText("Язык: " + language.first);
         automata->initialize_sigma(sigma);
         generatedCFG = automata->parse(language.first);
-        // ui->langCFG_textEdit->setText(/*languageCFG->PrintGrammar(1,1) + */generatedCFG->PrintGrammar(0,0));
-        generatedCFG->AnalyzeNonTerminals();
+
+        // ui->langCFG_textEdit->setText(languageCFG->PrintGrammar(0,0));
+
+        // if(!languageCFG->ContaisBadNT())
+        // {
+        //     languageCFG->GenerateMultipleWords(10, 10);
+        //     QStringList words = languageCFG->GetWords();
+        //     words.sort();
+        //     for (const QString &word : std::as_const(words))
+        //         ui->langCFG_textEdit->append(word);
+        // }
         ui->langCFG_textEdit->setText(/*ui->langCFG_textEdit->toPlainText() + */generatedCFG->PrintGrammar(0,0));
+        generatedCFG->AnalyzeNonTerminals();
+        ui->langCFG_textEdit->append(/*ui->langCFG_textEdit->toPlainText() + */generatedCFG->PrintGrammar(0,0));
 
         //qDebug() << generatedCFG->PrintGrammar(1,1);
 
-        generatedCFG->GenerateMultipleWords(50, 10);
-        QSet<QString> words = generatedCFG->GetWords();
-        for (const QString &word : std::as_const(words))
-            ui->langCFG_textEdit->append(word);
+        if(!generatedCFG->ContaisBadNT())
+        {
+            generatedCFG->GenerateMultipleWords(100, 50);
+            QStringList words = generatedCFG->GetWords();
+            words.sort();
+            for (const QString &word : std::as_const(words))
+                ui->langCFG_textEdit->append(word);
+        }
     }
     else
         ui->language_Label->setText("Язык: " + err);

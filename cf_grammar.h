@@ -73,7 +73,7 @@ private:
     QSet<QString> terminals;						// Sigma
     QVector<Rule> rules;							// P
     int pathes_amount = 0;                          // Количество путей
-    QSet<QString> words;							// Сгенерированныые слова
+    QStringList words;							// Сгенерированныые слова
 
 public:
     explicit CF_Grammar(QObject *parent = 0);
@@ -83,6 +83,7 @@ public:
     // Получить поля
     QString GetStartingNT();
     QMap<QString, QVector<Path>> GetNonTerminals();
+    bool ContaisBadNT();
     QSet<QString> GetTerminals();
     QVector<Rule> GetRules();
 
@@ -136,7 +137,7 @@ public:
     // Печать сгенерированных слов
     void PrintWords(bool IsDebug = false);
     // Получение сгенерированных слов
-    QSet<QString> GetWords();
+    QStringList GetWords();
 
 
     // Алгоритм Кока-Янгера-Касами, модификация для произвольной грамматики

@@ -7,6 +7,7 @@
 #include <QtMath>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QRandomGenerator>
 
 CF_Grammar::CF_Grammar(QObject *parent):
     QObject(parent)
@@ -15,7 +16,7 @@ CF_Grammar::CF_Grammar(QObject *parent):
     shortest_path = QMap<QString, Path>();
     bad_non_terminals = QSet<QString>();
     terminals = QSet<QString>();
-    words = QSet<QString>();
+    words = QStringList();
 }
 
 CF_Grammar::~CF_Grammar()
@@ -83,6 +84,11 @@ QString CF_Grammar::GetStartingNT()
 QMap<QString, QVector<Path> > CF_Grammar::GetNonTerminals()
 {
     return non_terminals;
+}
+
+bool CF_Grammar::ContaisBadNT()
+{
+    return !bad_non_terminals.isEmpty();
 }
 
 QSet<QString> CF_Grammar::GetTerminals()
@@ -318,7 +324,7 @@ void CF_Grammar::GenerateBasicPathes()
         for (Rule& i_rule : rules)
         {
             // Если для нетерминала ещё не найден ни один вывод
-            if (IsRuleViable(i_rule, new_found_pathes) && !analyzed_non_terminlas.contains(i_rule.left_part))
+            if (IsRuleViable(i_rule, non_terminals/*new_found_pathes?*/) && !analyzed_non_terminlas.contains(i_rule.left_part))
             {
                 position = 0;
                 for (QString& i_string : i_rule.right_part)
@@ -839,6 +845,7 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     QVector<QString> word;
     QVector<QString> final_word;
     QVector<Rule> appliable_rules;
+    QRandomGenerator *rand_ = QRandomGenerator::global();
     Path current_word_path;
     int rule_to_use = 0;
     int temp_int = 0;
@@ -865,7 +872,8 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     while (expected_length < Max_Length)
     {
         // Рандомный выбор номера правила
-        rule_to_use = rand() % appliable_rules.size();
+        rule_to_use = rand_->bounded(0, appliable_rules.size());
+        // rule_to_use = rand() % appliable_rules.size();
         complexity += appliable_rules[rule_to_use].complexity;
 
         // Применение правила
@@ -892,6 +900,8 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
 
         // Составление нового списка возможных для применения правил
         appliable_rules.clear();
+
+        // qDebug() << "Appliable rules:";
         for (QString& i_string : word)
         {
             if (non_terminals.contains(i_string))
@@ -903,6 +913,12 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
                     {
                         non_terminal_found = 1;
                         appliable_rules.push_back(i_rule);
+                        ///////////////////////////////////////////////////////
+                        // QString debugstr = i_rule.left_part + "->";
+                        // for(QString str : i_rule.right_part)
+                        //     debugstr += str;
+                        // qDebug() << debugstr;
+                        ///////////////////////////////////////////////////////
                         temp_int = std::max(temp_int, (int)i_rule.terminals_count);
                     }
                     else if (non_terminal_found && i_rule.left_part != i_string) break;
@@ -917,7 +933,13 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     final_word = word;
     while (GotNonTerminal(final_word))
     {
-        for (QString& i_string : word)
+        ///////////////////////////////////////////////////////
+        // QString debugstr = "word = ";
+        // for(QString str : final_word)
+        //     debugstr += str;
+        // qDebug() << debugstr;
+        ///////////////////////////////////////////////////////
+        for (QString& i_string : final_word)
         {
             if (non_terminals.contains(i_string))
             {
@@ -926,13 +948,20 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
                 for (Rule& i_rule : rules)
                 {
                     if (non_terminal_found && i_rule.left_part != i_string) break;
-                    if (i_rule.left_part == i_string && !GotNonTerminal(i_rule.right_part)){
+                    if (i_rule.left_part == i_string/* && !GotNonTerminal(i_rule.right_part)*/){
                         non_terminal_found = 1;
                         appliable_rules.push_back(i_rule);
+                        ///////////////////////////////////////////////////////
+                        // QString debugstr = i_rule.left_part + "->";
+                        // for(QString str : i_rule.right_part)
+                        //     debugstr += str;
+                        // qDebug() << debugstr;
+                        ///////////////////////////////////////////////////////
                     }
                 }
-                if (appliable_rules.size() > 1){
-                    rule_to_use = rand() % appliable_rules.size();
+                if (appliable_rules.size() > 0){
+                    rule_to_use = rand_->bounded(0, appliable_rules.size());
+                    // rule_to_use = rand() % appliable_rules.size();
                     Rule i_rule = appliable_rules[rule_to_use];
                     final_word = ApplyRule(final_word, i_rule);
 
@@ -956,6 +985,7 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
         }
     }
     word = final_word;
+    // qDebug() << current_word_path.PrintPath(1);
 
     for (QString& i_string : word)
     {
@@ -964,7 +994,7 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
 
     if (!words.contains(result))
     {
-        words.insert(result);
+        words.push_back(result);
     }
 
     return QPair<QString, int>(result, complexity);
@@ -978,17 +1008,19 @@ QVector<QString> CF_Grammar::GenerateMultipleWords(int Amount, int Max_Length)
     QString temp_str;
 
     if(rules.empty()) return result;
+    if(non_terminals[starting_non_terminal].isEmpty()) return result;
 
     while (words.size() < Amount)
     {
         words_size = (int)words.size();
         temp_str = GenerateWord(Max_Length).first;
-        result.push_back(temp_str);
+        if (!result.contains(temp_str))
+            result.push_back(temp_str);
 
         if (words_size == words.size()) iterations++;
         else iterations = 0;
 
-        if (iterations > Amount)
+        if (iterations > Amount/2)
         {
             for (Path& i_path : non_terminals[starting_non_terminal])
             {
@@ -1008,7 +1040,7 @@ QVector<QString> CF_Grammar::GenerateMultipleWords(int Amount, int Max_Length)
                 if (temp_str == "[EPS]")
                     temp_str = "";
                 if (!words.contains(temp_str))
-                    words.insert(temp_str);
+                    words.push_back(temp_str);
             }
             break;
         }
@@ -1029,7 +1061,7 @@ void CF_Grammar::PrintWords(bool IsDebug)
     qDebug() << debugMsg;
 }
 
-QSet<QString> CF_Grammar::GetWords()
+QStringList CF_Grammar::GetWords()
 {
     return words;
 }
@@ -1435,7 +1467,7 @@ QString EquivalenceTest(CF_Grammar* grammar1, CF_Grammar* grammar2, int Words_Le
     // CF_Grammar *grammar1 = Grammar1;
     // CF_Grammar grammar2 = Grammar2;
 
-    QSet<QString> words;
+    QStringList words;
     QVector<QString> incorrect_words;
 
     bool temp_bool = false;

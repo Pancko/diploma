@@ -18,7 +18,7 @@ void CF_Session::addThread(CF_Grammar* Grammar1, CF_Grammar* Grammar2, int Words
 
     // Сигналы и слоты
     connect(thread, &QThread::started, analyzer, &CF_Analyzer::process);
-    connect(analyzer, &CF_Analyzer::updateText, analyzer, &CF_Analyzer::stop);
+    // connect(analyzer, &CF_Analyzer::updateText, analyzer, &CF_Analyzer::stop);
     connect(analyzer, &CF_Analyzer::finished, thread, &QThread::quit);
     connect(analyzer, &CF_Analyzer::finished, analyzer, &CF_Analyzer::deleteLater);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
