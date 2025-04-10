@@ -2,7 +2,10 @@
 
 sLetter::sLetter()
 {
+    parent = nullptr;
     value = nullptr;
+    isPointer = false;
+    isBrackets = false;
     havePow = false;
     isIntPow = false;
     intPow = -1;
@@ -11,6 +14,9 @@ sLetter::sLetter()
 
 sLetter::sLetter(const QString& in)
 {
+    parent = nullptr;
+    isPointer = false;
+    isBrackets = false;
     value = in;
     if (!in.contains("<sup>"))
     {
@@ -79,6 +85,26 @@ void sLetter::addPow(const QString &in)
         return;
     }
     }
+}
+
+bool sLetter::operator==(const sLetter &Object) const
+{
+    if (this->parent != Object.parent) return false;
+    if (this->brackets != Object.brackets) return false;
+    if (this->value != Object.value) return false;
+    if (this->isPointer != Object.isPointer) return false;
+    if (this->isBrackets != Object.isBrackets) return false;
+    if (this->havePow != Object.havePow) return false;
+    if (this->isIntPow != Object.isIntPow) return false;
+    if (this->intPow != Object.intPow) return false;
+    if (this->chPow != Object.chPow) return false;
+    return true;
+}
+
+bool sLetter::operator!=(const sLetter &Object) const
+{
+    if (*this == Object) return false;
+    return true;
 }
 
 int combineInBlock(QVector<sLetter>& block, int pos)

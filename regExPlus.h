@@ -6,9 +6,11 @@
 
 struct sLetter
 {
+    QVector<sLetter> *parent;
     QVector<sLetter> brackets;
-    bool isBrackets;
     QString value;
+    bool isPointer;
+    bool isBrackets;
     bool havePow;
     bool isIntPow;
     int intPow;
@@ -18,6 +20,9 @@ struct sLetter
     sLetter(const QString& in);
 
     void addPow(const QString& in);
+
+    bool operator==(const sLetter& Object) const;
+    bool operator!=(const sLetter& Object) const;
 };
 
 int combineInBlock(QVector<sLetter> &block, int pos);

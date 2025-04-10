@@ -83,9 +83,9 @@ private:
     QMap<QChar, int> keyword_begin;
     //
     QVector<int> prev_states;
+    QVector<sLetter> blocks; // Последовательно идущие блоки
     QVector<sLetter> *current_block;   // Текущий блок куда записываются подблоки //Подряд идущие блоки одинаковых букв, например вида: a<sup>2</sup>a<sup>*</sup>
     QStack<QPair<QString, int>> blocks_stack; // Порождающие блоки вида <[1] - левая часть правила, 2 - номер правила в грамматике>,
-    QVector<sLetter> blocks; // Последовательно идущие блоки
     QVector<QString> sub_strs;
 
     QStringList sigma;
@@ -100,8 +100,8 @@ private:
     int error_state;
     int error_symbolicTokenClass;
     int non_terminals;
-    int brackets;
-    int str_layer;
+    int brackets; // Отсчёт количества скобок
+    // int str_layer;
 
     // Функции автомата:
     int KeywordStart();
@@ -118,11 +118,11 @@ private:
 
     int BlockLetter();
     int BlockDigit();
+    int BlockEnd();
     int BlockAnalyze();
     int BlockBracketsStart();
     int BlockBracketsFollow();
     int BlockBracketsEnd();
-    int BlockParse();
 
     int End();
 

@@ -296,14 +296,14 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
 
         //qDebug() << generatedCFG->PrintGrammar(1,1);
 
-        if(!generatedCFG->ContaisBadNT())
-        {
-            generatedCFG->GenerateMultipleWords(100, 50);
-            QStringList words = generatedCFG->GetWords();
-            words.sort();
-            for (const QString &word : std::as_const(words))
-                ui->langCFG_textEdit->append(word);
-        }
+        // if(!generatedCFG->ContaisBadNT() && (generatedCFG->GetRules().size() != 0))
+        // {
+        //     generatedCFG->GenerateMultipleWords(100, 50);
+        //     QStringList words = generatedCFG->GetWords();
+        //     words.sort();
+        //     for (const QString &word : std::as_const(words))
+        //         ui->langCFG_textEdit->append(word);
+        // }
     }
     else
         ui->language_Label->setText("Язык: " + err);

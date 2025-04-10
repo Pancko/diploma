@@ -151,7 +151,7 @@ void Automata::initialize_table()
     table[S_BLOCK][T_LEFTROUNDBR] = &Automata::BlockBracketsStart;
     table[S_BLOCK][T_RIGHTROUNDBR] = &Automata::BlockBracketsEnd;
     table[S_BLOCK][T_EOS] = &Automata::BlockBracketsEnd; ////////////
-    table[S_BLOCK][T_END] = &Automata::BlockAnalyze;
+    table[S_BLOCK][T_END] = &Automata::BlockEnd;
 
     for (int j = 0; j < tokens_number; j++)
     {
@@ -197,8 +197,8 @@ CF_Grammar* Automata::parse(const QString& lang)
     prev_states.clear();
     prev_states.squeeze();
 
-    current_block->clear();
-    current_block->squeeze();
+    // current_block->clear();
+    // current_block->squeeze();
 
     sub_strs.clear();
     sub_strs.squeeze();
@@ -211,6 +211,9 @@ CF_Grammar* Automata::parse(const QString& lang)
 
     blocks.clear();
     blocks.squeeze();
+    sLetter l;
+    l.isPointer = 1;
+    blocks.push_back(l);
 
     current_block = &blocks;
 
@@ -220,7 +223,6 @@ CF_Grammar* Automata::parse(const QString& lang)
     error_symbolicTokenClass = 0;
     non_terminals = 0;
     brackets = 0;
-    str_layer = 0;
 
     QChar symbol;
     prev_symbol = symbol;
@@ -238,13 +240,13 @@ CF_Grammar* Automata::parse(const QString& lang)
         symbol = lang[pos];
         token = transliterator(symbol);
 
-        qDebug() << "State1: " << debugState(state) << ", symbol = " << symbol << "token = " << debugToken(token.tokenClass);
+        // qDebug() << "State1: " << debugState(state) << ", symbol = " << symbol << "token = " << debugToken(token.tokenClass);
 
         error_state = state;
         error_symbolicTokenClass = token.tokenClass;
         state = (this->*table[state][token.tokenClass])();
 
-        qDebug() << "State2: " << debugState(state);
+        // qDebug() << "State2: " << debugState(state);
 
         pos++;
     }
@@ -357,73 +359,9 @@ int Automata::KeywordFound()
 
     if (keyword.contains("</sup>"))
     {
-        current_block->end()->addPow(keyword);
+        current_block->last().addPow(keyword);
         keyword.clear();
     }
-
-    // if (st == S_BLOCK && keyword.contains("</sup>"))
-    // {
-    //     // current_block.last().addPow(keyword);
-    //     current_block->last().addPow(keyword);
-    // }
-    // if (st == S_BLOCKBRWAITINGPOW && keyword.contains("</sup>")){
-    //     // sLetter l;
-    //     // QStringList variants {"+", "*"};
-    //     // Rule new_rule;
-    //     current_block->end()->addPow(keyword);
-    //     // l.addPow(keyword);
-    //     keyword.clear();
-    //     //////////////////////////////////////////////////////////
-    //     // if (prev_states.contains(S_WEQ))
-    //     // {
-    //     //     QString temp = blocks_stack.top().first;
-    //     //     QString left_part = temp;
-    //     //     QString lit = temp.insert(temp.indexOf(']'), "br");
-    //     //     QStringList literal = {lit};
-    //     //     temp = "[" + QString::number(non_terminals) + "]";
-    //     //     new_rule.left_part = left_part;
-    //     //     new_rule.right_part.push_back(temp);
-
-    //     //     SymbolicToken t = token;
-    //     //     int temp_pos = pos + 1;
-    //     //     while(temp_pos < language.size() && language[temp_pos] == ' ')
-    //     //         temp_pos++;
-    //     //     if (temp_pos < language.size())
-    //     //         t = transliterator(language[temp_pos]);
-
-    //     //     if (!(t.tokenClass == T_END))  // в последнем блоке такого быть коненчо не должно
-    //     //         new_rule.right_part.push_back(QString("[>" + QString::number(non_terminals + 1) + "]"));
-
-    //     //     resultGrammar->AddRule(new_rule);
-
-    //     //     switch(variants.indexOf(l.chPow))
-    //     //     {
-    //     //     case -1: //число
-    //     //     {
-    //     //         grammar_add_int(temp, &literal, l.intPow);
-    //     //         break;
-    //     //     }
-    //     //     case 0: // +
-    //     //     {
-    //     //         grammar_add_any_plus(temp, &literal);
-    //     //         break;
-    //     //     }
-    //     //     case 1: // *
-    //     //     {
-    //     //         grammar_add_any(temp, &literal);
-    //     //         break;
-    //     //     }
-    //     //     }
-    //     //     new_rule.clear();
-    //     //     new_rule.left_part = lit;
-    //     //     resultGrammar->AddRule(new_rule);
-    //     //     blocks_stack.top().first = new_rule.left_part;
-    //     //     blocks_stack.top().second = resultGrammar->GetRules().indexOf(new_rule); // местонахождение нового порождающего блока (как нулевое правило S обычно)
-    //     //     st = BlockParse();
-    //     // }
-    // }
-    // if (keyword.contains("</sup>"))
-    //     keyword.clear();
 
     return st;
 }
@@ -476,56 +414,43 @@ int Automata::Eq()
 
 int Automata::Palindrome()
 {
-    // if (keyword == "<sup>-1</sup>")
-    // {
-    //     keyword.clear();
-        if(prev_states.contains(S_WEQ)){
-            for(QString& symbol : sigma)
-            {
-                resultGrammar->AddRule(Rule("S", QVector<QString>({symbol})));
-                resultGrammar->AddRule(Rule("S", QVector<QString>({symbol, "S", symbol})));
-            }
-            resultGrammar->AddRule(Rule("S", QVector<QString>({"[EPS]"})));
+    if(prev_states.contains(S_WEQ)){
+        for(QString& symbol : sigma)
+        {
+            resultGrammar->AddRule(Rule("S", QVector<QString>({symbol})));
+            resultGrammar->AddRule(Rule("S", QVector<QString>({symbol, "S", symbol})));
         }
-        if(prev_states.contains(S_WNEQ)){
-            if (sigma.size() < 2) return Error();
-            //resultGrammar->AddRule(Rule("S", QVector<QString>({"[EPS]"}))); // если пустое слово не является палиндромом
-            for(int i = 0; i < sigma.size(); i++)
+        resultGrammar->AddRule(Rule("S", QVector<QString>({"[EPS]"})));
+    }
+    if(prev_states.contains(S_WNEQ)){
+        if (sigma.size() < 2) return Error();
+        for(int i = 0; i < sigma.size(); i++)
+        {
+            resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[i]})));
+            resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[i], "[S']", sigma[i]})));
+            resultGrammar->AddRule(Rule("[S']", QVector<QString>({sigma[i], "[S']", sigma[i]})));
+            for (int j = i + 1; j < sigma.size(); j++)
             {
-                resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[i]})));
-                resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[i], "[S']", sigma[i]})));
-                resultGrammar->AddRule(Rule("[S']", QVector<QString>({sigma[i], "[S']", sigma[i]})));
-                for (int j = i + 1; j < sigma.size(); j++)
-                {
-                    resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[i], "S", sigma[j]})));
-                    resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[j], "S", sigma[i]})));
+                resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[i], "S", sigma[j]})));
+                resultGrammar->AddRule(Rule("S", QVector<QString>({sigma[j], "S", sigma[i]})));
 
-                    resultGrammar->AddRule(Rule("[S']", QVector<QString>({sigma[i], "S", sigma[j]})));
-                    resultGrammar->AddRule(Rule("[S']", QVector<QString>({sigma[j], "S", sigma[i]})));
-                }
+                resultGrammar->AddRule(Rule("[S']", QVector<QString>({sigma[i], "S", sigma[j]})));
+                resultGrammar->AddRule(Rule("[S']", QVector<QString>({sigma[j], "S", sigma[i]})));
             }
         }
-        resultGrammar->AnalyzeNonTerminals();
-        return S_END;
-    // }
+    }
+    resultGrammar->AnalyzeNonTerminals();
+    return S_END;
     return Error();
 }
 
 int Automata::BlockLetter()
 {
-    int st = S_BLOCK;
-    // if(!current_block.isEmpty())
-    // {
-    //     if(current_block.last().value != token.val)
-    //         st = BlockAnalyze();
-    // }
     sLetter l;
     l.value = token.val;
-    // current_block.push_back(l);
-
     current_block->push_back(l);
 
-    return st;
+    return S_BLOCK;
 }
 
 int Automata::BlockDigit()
@@ -534,89 +459,171 @@ int Automata::BlockDigit()
     return state;
 }
 
+int Automata::BlockEnd()
+{
+    current_block = &blocks;
+    return BlockAnalyze();
+}
+
 int Automata::BlockAnalyze()
 {
-    sLetter l;
+    Rule new_rule;
+    int br_block = 0;
+    QString br_non_terminal;
+    QString left_part;
+    QString temp;
+    QString debugMsg;
+
     QStringList variants {"+", "*"};
-    int rule_pos = 0;
-    bool s_weq = prev_states.contains(S_WEQ);
-    bool s_wneq = prev_states.contains(S_WNEQ);
-    QStringList allowed_sigma = sigma;
-    if(s_weq || s_wneq)
+    QStringList literal;
+    // QStringList allowed_sigma = sigma;
+
+    // bool s_weq = prev_states.contains(S_WEQ);
+    // bool s_wneq = prev_states.contains(S_WNEQ);
+
+    QVector<sLetter> block = *current_block;
+
+    QVector<sLetter>::iterator l;
+
+    for(l = block.begin(); l != block.end(); l++)
     {
-        if(!blocks_stack.isEmpty())
-            rule_pos = blocks_stack.top().second;
-        for(int i = 0; i < current_block.size(); i++)
+        debugMsg.clear();
+        if(!l->isPointer)
         {
-            Rule new_rule;
-            l = current_block[i];
-            QStringList literal = {l.value};
-            QString left_part = "[" + QString::number(non_terminals + 1) + "]";
+            literal = {l->value};
+            left_part = "[" + QString::number(non_terminals + 1) + "]";
+            temp = "[" + QString::number(non_terminals + 1) + "]";
 
             if(non_terminals == 0)
             {
                 resultGrammar->AddRule(Rule("[0]", QVector<QString>({"[>1]"})));
-                if (s_wneq){
-                    allowed_sigma.removeAll(l.value);
-                    grammar_add_any("[0]", &allowed_sigma);
-                }
+                // if (s_wneq){
+                //     allowed_sigma.removeAll(l.value);
+                //     grammar_add_any("[0]", &allowed_sigma);
+                // }
             }
-            if(rule_pos > 0) // Для скобок
-            {
-                Rule current_rule = resultGrammar->GetRules()[rule_pos];
-                QString temp = current_rule.left_part;
-                if(current_rule.right_part.empty())
-                    temp.insert(temp.indexOf(']'), "'");
-                else
-                {
-                    temp = current_rule.right_part.last();
-                    temp.insert(temp.indexOf(']'), "'");
-                }
 
-                resultGrammar->ModRule(rule_pos, temp);
-                left_part = temp;
-            }
-            else // делаем так, что каждый блок i имеет схему [>i]->[i][>i+1]
+            if(brackets == 0) // делаем так, что каждый блок i имеет схему [>i]->[i][>i+1]
             {
                 non_terminals++;
                 new_rule.left_part = QString("[>" + QString::number(non_terminals) + "]");
                 new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "]"));
 
-                if (!(token.tokenClass == T_END && i == current_block.size() - 1))  // в последнем блоке такого быть коненчо не должно
+                if ((l - block.begin()) != (block.size() - 1))  // в последнем блоке такого быть конечно не должно
                     new_rule.right_part.push_back(QString("[>" + QString::number(non_terminals + 1) + "]"));
 
                 resultGrammar->AddRule(new_rule);
-                new_rule.right_part.clear();
-                new_rule.left_part.clear();
+                new_rule.clear();
             }
-            if (l.havePow)
+            else // Для скобок
             {
-                switch(variants.indexOf(l.chPow))
+                temp = "[" + QString::number(non_terminals) + "]";
+                for (int i = 0; i < brackets; i++){
+                    temp.insert(temp.indexOf('[') + 1, '<');
+                    temp.insert(temp.indexOf(']'), '>');
+                }
+                br_non_terminal = temp;
+
+                br_block++;
+                if ((l - block.begin()) == 1) /////////////////////////////////////////////////////////////////////////////NO
+                    new_rule.left_part = temp;
+                else
+                {
+                    temp.insert(temp.indexOf('>'), QString("_" + QString::number(br_block) + "."));
+                    new_rule.left_part = temp;
+                }
+                temp = br_non_terminal;
+                temp.insert(temp.indexOf('>'), QString("_" + QString::number(br_block)));
+                left_part = temp;
+                new_rule.right_part.push_back(temp);
+
+                if ((l - block.begin()) != (block.size() - 1))  // в последнем блоке такого быть конечно не должно
+                {
+                    temp = br_non_terminal;
+                    temp.insert(temp.indexOf('>'), QString("_" + QString::number(br_block + 1) + "."));
+                    new_rule.right_part.push_back(temp);
+                }
+
+                resultGrammar->AddRule(new_rule);
+                new_rule.clear();
+
+            }
+
+            if(l->isBrackets)
+            {
+                brackets++;
+                temp = "[" + QString::number(non_terminals) + "]";
+                for (int i = 0; i < brackets; i++){
+                    temp.insert(temp.indexOf('[') + 1, '<');
+                    temp.insert(temp.indexOf(']'), '>');
+                }
+                literal = {temp};
+
+                debugMsg += ")";
+                switch(variants.indexOf(l->chPow))
                 {
                 case -1: //число a^5 w!= a^5: [EPS],a,aa,aaa,aaaa,a^5Sigma+
                 {
-                    grammar_add_int(left_part, &literal, l.intPow);
+                    debugMsg += QString("^" + QString::number(l->intPow));
+                    grammar_add_int(left_part, &literal, l->intPow);
                     break;
                 }
                 case 0: // + w != a+: [EPS], if last: a+E+alpha*: E = sigma\a, alpha = sigma
                 {
+                    debugMsg += QString("^" + l->chPow);
                     grammar_add_any_plus(left_part, &literal);
                     break;
                 }
                 case 1: // * a^* w != a^*: aplha^+:alpha = sigma\a
                 {
+                    debugMsg += QString("^" + l->chPow);
                     grammar_add_any(left_part, &literal);
                     break;
                 }
                 }
+                current_block = &l->brackets;
+                qDebug() << "(";
+                BlockAnalyze();
+                brackets--;
             }
-            else // single character w=a w!=a: [EPS], a[Sigma]+, E[Sigma]*: E!=a
+            else
             {
-                grammar_add_int(left_part, &literal, 1);
+                debugMsg += l->value;
+                if (l->havePow)
+                {
+                    switch(variants.indexOf(l->chPow))
+                    {
+                    case -1: //число a^5 w!= a^5: [EPS],a,aa,aaa,aaaa,a^5Sigma+
+                    {
+                        debugMsg += QString("^" + QString::number(l->intPow));
+                        grammar_add_int(left_part, &literal, l->intPow);
+                        break;
+                    }
+                    case 0: // + w != a+: [EPS], if last: a+E+alpha*: E = sigma\a, alpha = sigma
+                    {
+                        debugMsg += QString("^" + l->chPow);
+                        grammar_add_any_plus(left_part, &literal);
+                        break;
+                    }
+                    case 1: // * a^* w != a^*: aplha^+:alpha = sigma\a
+                    {
+                        debugMsg += QString("^" + l->chPow);
+                        grammar_add_any(left_part, &literal);
+                        break;
+                    }
+                    }
+                }
+                else
+                {
+                    grammar_add_int(left_part, &literal, 1);
+                }
             }
+
+            qDebug() << debugMsg;
         }
     }
-    current_block.clear();
+    if (block.first().parent != nullptr)
+        current_block = block.first().parent;
     if(token.tokenClass == T_END)
         return S_END;
     return state;
@@ -624,49 +631,24 @@ int Automata::BlockAnalyze()
 
 int Automata::BlockBracketsStart()
 {
-    brackets++;
     sLetter l;
     l.isBrackets = 1;
-    if(blocks.end()->isBrackets)
-    {
-        current_block = &blocks.end()->brackets;
-        while(current_block->end()->isBrackets)
-            current_block = &current_block->end()->brackets;
-        current_block->push_back(l);
-        current_block = &current_block->end()->brackets;
-    }
-    else
-        blocks.push_back(l);
-    // int st = 0;
-    // if(!current_block.isEmpty())
-    // {
-    //     st = BlockAnalyze();
-    // }
-    // if (st == S_END) return S_END;
-    // QString temp = "[>" + QString::number(non_terminals + 1) + "]";
-    // if(resultGrammar->GetRules().isEmpty())
-    //     resultGrammar->AddRule(Rule("[0]", QVector<QString>({QString("[>" + QString::number(non_terminals + 1) + "]")})));
-    // else{
-    //     if  (str_layer != 0){ // == 0
-    //         //resultGrammar->ModRule(0, QString("[>" + QString::number(non_terminals + 1) + "br]"));
-    //     //else{
-    //         temp = blocks_stack[str_layer - 1].first;
-    //         temp.insert(temp.indexOf('>'), ">");
-    //         resultGrammar->ModRule(blocks_stack[str_layer - 1].second, temp);
-    //     }
-    // }
-    // //blocks_stack.push(QPair<QString, int>(QString("[>" + QString::number(non_terminals + 1) + "]"), -1));
-    // blocks_stack.push(QPair<QString, int>(temp, -1));
-    // non_terminals++;
-    return S_BLOCKBRACKETS;
+    // l.parent = current_block->first().parent;
+
+    sLetter temp_l;
+    temp_l.isPointer = 1;
+    temp_l.parent = current_block;
+
+    l.brackets.push_back(temp_l);
+
+    current_block->push_back(l);
+    current_block = &current_block->last().brackets;
+    qDebug() << "DOWN ONE";
+    return state;
 }
 
 int Automata::BlockBracketsFollow()
 {
-    if (sub_strs.size() < brackets)
-        sub_strs.resize(brackets);
-    for (int i = 0; i < brackets; i++)
-        sub_strs[i] += token.val;
     switch(token.tokenClass)
     {
     case T_LEFTROUNDBR: return BlockBracketsStart();
@@ -678,49 +660,11 @@ int Automata::BlockBracketsFollow()
 
 int Automata::BlockBracketsEnd()
 {
-    if (token.tokenClass != T_EOS)
-        brackets--;
-    if(brackets == 0)
-    {
-        if (state == S_BLOCKBRACKETS)
-            return S_BLOCKBRWAITINGPOW;
-        if (state == S_BLOCK){
-            if (!current_block.isEmpty())
-                BlockAnalyze();
-            blocks_stack.pop();
-            return S_SKIPPOW;
-        }
-        brackets = 0;
-    } else return BlockBracketsFollow();
-    return Error();
-}
-
-int Automata::BlockParse()
-{
-    qDebug() << "IN BLOCK PARSER";
-    QChar symbol;
-    QString sub = sub_strs[str_layer] + '{';
-    str_layer++;
-    int pos = 0;
-    state = S_BLOCK;
-    while (state != S_SKIPPOW)
-    {
-        if (prev_states.last() != state)
-            prev_states.push_back(state);
-        prev_symbol = symbol;
-        symbol = sub[pos];
-        token = transliterator(symbol);
-        qDebug() << "State1: " << debugState(state) << ", symbol = " << symbol << "token = " << debugToken(token.tokenClass);
-        error_state = state;
-        error_symbolicTokenClass = token.tokenClass;
-        state = (this->*table[state][token.tokenClass])();
-        qDebug() << "State2: " << debugState(state);
-        pos++;
+    if(current_block->first().parent != nullptr){
+        qDebug() << "UP ONE";
+        current_block = current_block->first().parent;
     }
-    str_layer--;
-    sub_strs[str_layer].clear();
-    qDebug() << "EXITED BLOCK PARSER";
-    return S_BLOCK;
+    return state;
 }
 
 int Automata::End()
