@@ -15,9 +15,9 @@
 // Правило из КС-грамматики
 struct Rule
 {
-    QString left_part;				// Левая часть правила
-    QVector<QString> right_part;	// Правая часть правила
-    size_t terminals_count = 0;		// Счетчик терминалов
+    QString left_part;              	// Левая часть правила
+    QVector<QString> right_part;    // Правая часть правила
+    size_t terminals_count = 0;     // Счетчик терминалов
     int complexity = 0;             // Сложность правила для генерации
 
     bool operator==(const Rule& Object) const;
@@ -86,6 +86,7 @@ public:
     bool ContaisBadNT();
     QSet<QString> GetTerminals();
     QVector<Rule> GetRules();
+    bool ContainsRuleWithNT(const QString &str);
 
     // Считывание грамматики из файла
     QString ReadFromTXT(QString& inputString);

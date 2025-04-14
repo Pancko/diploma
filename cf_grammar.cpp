@@ -101,6 +101,13 @@ QVector<Rule> CF_Grammar::GetRules()
     return rules;
 }
 
+bool CF_Grammar::ContainsRuleWithNT(const QString &str)
+{
+    for (const Rule &i_rule : std::as_const(rules))
+        if (i_rule.left_part == str) return true;
+    return false;
+}
+
 //=============== Считывание грамматики из файла и создание объекта =====================================
 
 QString CF_Grammar::ReadFromTXT(QString& inputString)
@@ -852,7 +859,6 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     int complexity = 0;
     size_t expected_length = 0;
     size_t actual_length = 0;
-    bool non_terminal_found = 0;
 
     // Начальный вид слова
     word.push_back(starting_non_terminal);
@@ -873,7 +879,6 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
     {
         // Рандомный выбор номера правила
         rule_to_use = rand_->bounded(0, appliable_rules.size());
-        // rule_to_use = rand() % appliable_rules.size();
         complexity += appliable_rules[rule_to_use].complexity;
 
         // Применение правила
@@ -891,79 +896,64 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
         actual_length += appliable_rules[rule_to_use].right_part.size() - 1;
         expected_length += appliable_rules[rule_to_use].terminals_count;
         expected_length -= shortest_path[appliable_rules[rule_to_use].left_part].length;
+
         for (QString& i_string : appliable_rules[rule_to_use].right_part)
         {
             if (non_terminals.contains(i_string))
                 expected_length += shortest_path[i_string].length;
         }
-        if (actual_length > Max_Length) break;
+        if (complexity == 0){
+            if (actual_length > Max_Length) break;
+        }
+        else if (complexity > Max_Length) break;
 
         // Составление нового списка возможных для применения правил
         appliable_rules.clear();
 
-        // qDebug() << "Appliable rules:";
         for (QString& i_string : word)
         {
             if (non_terminals.contains(i_string))
             {
-                non_terminal_found = 0;
                 for (Rule& i_rule : rules)
                 {
                     if (i_rule.left_part == i_string)
                     {
-                        non_terminal_found = 1;
                         appliable_rules.push_back(i_rule);
-                        ///////////////////////////////////////////////////////
-                        // QString debugstr = i_rule.left_part + "->";
-                        // for(QString str : i_rule.right_part)
-                        //     debugstr += str;
-                        // qDebug() << debugstr;
-                        ///////////////////////////////////////////////////////
-                        temp_int = std::max(temp_int, (int)i_rule.terminals_count);
                     }
-                    else if (non_terminal_found && i_rule.left_part != i_string) break;
                 }
             }
         }
-        if (temp_int == 0) break;
-        temp_int = 0;
     }
+
+    /////////////////////////////////////////////////////
+    // QString debugstr = "word = ";
+    // for(QString str : word)
+    //     debugstr += str;
+    // debugstr += ", expected = " + QString::number(expected_length);
+    // debugstr += ", complexity = " + QString::number(complexity);
+    // qDebug() << debugstr;
+    /////////////////////////////////////////////////////
 
     // Доведение слова до конца
     final_word = word;
     while (GotNonTerminal(final_word))
     {
-        ///////////////////////////////////////////////////////
-        // QString debugstr = "word = ";
-        // for(QString str : final_word)
-        //     debugstr += str;
-        // qDebug() << debugstr;
-        ///////////////////////////////////////////////////////
-        for (QString& i_string : final_word)
+        for (const QString& i_string : std::as_const(final_word))
         {
             if (non_terminals.contains(i_string))
             {
                 appliable_rules.clear();
-                non_terminal_found = 0;
                 for (Rule& i_rule : rules)
                 {
-                    if (non_terminal_found && i_rule.left_part != i_string) break;
-                    if (i_rule.left_part == i_string/* && !GotNonTerminal(i_rule.right_part)*/){
-                        non_terminal_found = 1;
+                    if (i_rule.left_part == i_string && !i_rule.right_part.contains(i_string)){
                         appliable_rules.push_back(i_rule);
-                        ///////////////////////////////////////////////////////
-                        // QString debugstr = i_rule.left_part + "->";
-                        // for(QString str : i_rule.right_part)
-                        //     debugstr += str;
-                        // qDebug() << debugstr;
-                        ///////////////////////////////////////////////////////
                     }
                 }
                 if (appliable_rules.size() > 0){
                     rule_to_use = rand_->bounded(0, appliable_rules.size());
-                    // rule_to_use = rand() % appliable_rules.size();
                     Rule i_rule = appliable_rules[rule_to_use];
                     final_word = ApplyRule(final_word, i_rule);
+                    complexity += i_rule.complexity;
 
                     current_word_path.path_rules.push_back(i_rule);
                     current_word_path.path_words.push_back(final_word);
@@ -971,9 +961,10 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
                     current_word_path.length++;
                 }
                 else{
-                    for (Rule& i_rule : shortest_path[i_string].path_rules) /////////////RANDOM????
+                    for (Rule& i_rule : shortest_path[i_string].path_rules)
                     {
                         final_word = ApplyRule(final_word, i_rule);
+                        complexity += i_rule.complexity;
 
                         current_word_path.path_rules.push_back(i_rule);
                         current_word_path.path_words.push_back(final_word);
@@ -985,7 +976,6 @@ QPair<QString, int> CF_Grammar::GenerateWord(int Max_Length)
         }
     }
     word = final_word;
-    // qDebug() << current_word_path.PrintPath(1);
 
     for (QString& i_string : word)
     {

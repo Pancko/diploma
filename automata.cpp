@@ -197,12 +197,6 @@ CF_Grammar* Automata::parse(const QString& lang)
     prev_states.clear();
     prev_states.squeeze();
 
-    // current_block->clear();
-    // current_block->squeeze();
-
-    sub_strs.clear();
-    sub_strs.squeeze();
-
     blocks_stack.clear();
     blocks_stack.squeeze();
 
@@ -269,6 +263,26 @@ void Automata::grammar_add_any(const QString& left_part, const QStringList *allo
     resultGrammar->AddRule(new_rule);
 }
 
+void Automata::grammar_add_alpha_any(const QString &left_part, const QStringList *allowed_sigma, bool empty_rule)
+{
+    Rule new_rule;
+    new_rule.left_part = left_part;
+    for(const QString &str : *allowed_sigma)
+    {
+        new_rule.right_part.push_back(str);
+        new_rule.right_part.push_back("[ANY]");
+        resultGrammar->AddRule(new_rule);
+        new_rule.right_part.clear();
+    }
+    if (empty_rule)
+    {
+        new_rule.right_part.push_back("[EPS]");
+        resultGrammar->AddRule(new_rule);
+    }
+    if(resultGrammar->ContainsRuleWithNT("[ANY]")) return;
+    grammar_add_any("[ANY]", &sigma);
+}
+
 void Automata::grammar_add_any_plus(const QString& left_part, const QStringList *allowed_sigma)
 {
     Rule new_rule;
@@ -278,20 +292,66 @@ void Automata::grammar_add_any_plus(const QString& left_part, const QStringList 
     for(const QString &str : *allowed_sigma)
     {
         new_rule.right_part.push_back(str);
-        new_rule.right_part.push_back(new_left_part);
+        if(left_part == "[ANYPLUS]")
+            new_rule.right_part.push_back("[ANY]");
+        else
+            new_rule.right_part.push_back(new_left_part);
         resultGrammar->AddRule(new_rule);
         new_rule.right_part.clear();
     }
-    new_rule.left_part = new_left_part;
+    if(left_part == "[ANYPLUS]"){
+        if(resultGrammar->ContainsRuleWithNT("[ANY]")) return;
+        grammar_add_any("[ANY]", &sigma);
+    }
+    else{
+        new_rule.left_part = new_left_part;
+        for(const QString &str : *allowed_sigma)
+        {
+            new_rule.right_part.push_back(str);
+            new_rule.right_part.push_back(new_rule.left_part);
+            resultGrammar->AddRule(new_rule);
+            new_rule.right_part.clear();
+        }
+        new_rule.right_part.push_back("[EPS]");
+        resultGrammar->AddRule(new_rule);
+    }
+}
+
+void Automata::grammar_add_any_int(const QString &left_part, const QStringList *allowed_sigma, int val_, const QStringList *disallowed_sigma)
+{
+    QStringList new_sigma = sigma;
+    QString alpha = left_part;//"[" + QString::number(non_terminals) + "_ALPHA]";
+    alpha.insert(alpha.indexOf(']'), "_ALPHA");
+    Rule new_rule;
+    new_rule.left_part = left_part;
+    new_rule.right_part.push_back(alpha);
+    resultGrammar->AddRule(new_rule);
+    new_rule.right_part.clear();
+
+    for(const QString &str : *disallowed_sigma)
+        new_sigma.removeAll(str);
+
     for(const QString &str : *allowed_sigma)
     {
+        for(int j = 0; j < val_ - 1; j++){
+            new_rule.right_part.push_back(str);
+            new_rule.right_part.push_back(alpha);
+            resultGrammar->AddRule(new_rule);
+            new_rule.right_part.removeAll(alpha);
+        }
         new_rule.right_part.push_back(str);
-        new_rule.right_part.push_back(new_rule.left_part);
+        new_rule.right_part.push_back(str);
+        new_rule.right_part.push_back("[ANY]");
         resultGrammar->AddRule(new_rule);
-        new_rule.right_part.clear();
+        if(!resultGrammar->ContainsRuleWithNT("[ANY]")) grammar_add_any("[ANY]", &sigma);
     }
+
+    new_rule.left_part = alpha;
+    new_rule.right_part.clear();
     new_rule.right_part.push_back("[EPS]");
     resultGrammar->AddRule(new_rule);
+
+    grammar_add_alpha_any(alpha, &new_sigma);
 }
 
 void Automata::grammar_add_int(const QString &left_part, const QStringList *allowed_sigma, int val_)
@@ -307,6 +367,23 @@ void Automata::grammar_add_int(const QString &left_part, const QStringList *allo
         resultGrammar->AddRule(new_rule);
         new_rule.right_part.clear();
     }
+}
+
+QVector<sLetter>::iterator Automata::find_symbol(const QVector<sLetter>::iterator &current_symbol, int next, bool non_eps)
+{
+    QVector<sLetter>::iterator temp_l = current_symbol
+    int pos_next = next;
+    if (temp_l->isBrackets)
+    {
+        temp_l = temp_l->brackets.begin() + pos_next;
+        while (temp_l->isBrackets)
+            temp_l = temp_l->brackets.begin() + pos_next;
+    }
+    for (int i = 0; i < next; i++)
+    {
+        temp_l++;
+    }
+    return temp_l;
 }
 
 int Automata::KeywordStart()
@@ -448,6 +525,8 @@ int Automata::BlockLetter()
 {
     sLetter l;
     l.value = token.val;
+    if(current_block->size() > 0)
+        l.parent = current_block->first().parent;
     current_block->push_back(l);
 
     return S_BLOCK;
@@ -471,15 +550,17 @@ int Automata::BlockAnalyze()
     int br_block = 0;
     QString br_non_terminal;
     QString left_part;
+    QString parent_nt;
     QString temp;
     QString debugMsg;
 
     QStringList variants {"+", "*"};
     QStringList literal;
-    // QStringList allowed_sigma = sigma;
+    QStringList allowed_sigma = sigma;
+    QStringList anyplus_sigma = sigma;
 
     // bool s_weq = prev_states.contains(S_WEQ);
-    // bool s_wneq = prev_states.contains(S_WNEQ);
+    bool s_wneq = prev_states.contains(S_WNEQ);
 
     QVector<sLetter> block = *current_block;
 
@@ -491,31 +572,59 @@ int Automata::BlockAnalyze()
         if(!l->isPointer)
         {
             literal = {l->value};
+            allowed_sigma = sigma;
+            if(!l->isBrackets)
+                allowed_sigma.removeAll(l->value);
+            else
+            {
+                sLetter temp_l = l->brackets[1];
+                while (temp_l.isBrackets)
+                    temp_l = temp_l.brackets[1];
+                allowed_sigma.removeAll(temp_l.value);
+            }
+            parent_nt = QString("[>" + QString::number(non_terminals + 1) + "]");
             left_part = "[" + QString::number(non_terminals + 1) + "]";
             temp = "[" + QString::number(non_terminals + 1) + "]";
 
             if(non_terminals == 0)
-            {
                 resultGrammar->AddRule(Rule("[0]", QVector<QString>({"[>1]"})));
-                // if (s_wneq){
-                //     allowed_sigma.removeAll(l.value);
-                //     grammar_add_any("[0]", &allowed_sigma);
-                // }
-            }
 
             if(brackets == 0) // делаем так, что каждый блок i имеет схему [>i]->[i][>i+1]
             {
                 non_terminals++;
-                new_rule.left_part = QString("[>" + QString::number(non_terminals) + "]");
-                new_rule.right_part.push_back(QString("[" + QString::number(non_terminals) + "]"));
+                new_rule.left_part = parent_nt;
+                new_rule.right_part.push_back(left_part);
 
-                if ((l - block.begin()) != (block.size() - 1))  // в последнем блоке такого быть конечно не должно
+                if ((l - block.begin()) == (block.size() - 1))  // в последнем блоке такого быть конечно не должно
+                {
+                    if (s_wneq){
+                        if (variants.contains(l->chPow))
+                            anyplus_sigma.removeAll(l->value);
+                        new_rule.right_part.push_back("[ANYPLUS]");
+                    }
+                }
+                else
                     new_rule.right_part.push_back(QString("[>" + QString::number(non_terminals + 1) + "]"));
 
                 resultGrammar->AddRule(new_rule);
+
+                if(s_wneq){
+                    if (l->havePow && l->chPow == '*' && ((l - block.begin()) != (block.size() - 1)))
+                    {
+                        QVector<sLetter>::iterator temp_l = l + 1;
+                        if(temp_l->isBrackets){
+                            temp_l = temp_l->brackets.begin() + 1;// надо взять следующий знак и посмотреть кто он по жизни
+                            while (temp_l->isBrackets)
+                                temp_l = temp_l->brackets.begin() + 1; // зашли в самую глубокую скобку
+                        }
+                        allowed_sigma.removeAll(temp_l->value);
+                        grammar_add_alpha_any(new_rule.left_part, &allowed_sigma);
+                    }
+                }
+
                 new_rule.clear();
             }
-            else // Для скобок
+            else // Для скобок [i]->[<i>]
             {
                 temp = "[" + QString::number(non_terminals) + "]";
                 for (int i = 0; i < brackets; i++){
@@ -525,13 +634,14 @@ int Automata::BlockAnalyze()
                 br_non_terminal = temp;
 
                 br_block++;
-                if ((l - block.begin()) == 1) /////////////////////////////////////////////////////////////////////////////NO
+                if ((l - block.begin()) == 1)
                     new_rule.left_part = temp;
                 else
                 {
                     temp.insert(temp.indexOf('>'), QString("_" + QString::number(br_block) + "."));
                     new_rule.left_part = temp;
                 }
+                parent_nt = new_rule.left_part;
                 temp = br_non_terminal;
                 temp.insert(temp.indexOf('>'), QString("_" + QString::number(br_block)));
                 left_part = temp;
@@ -559,24 +669,44 @@ int Automata::BlockAnalyze()
                 }
                 literal = {temp};
 
+                QStringList temp_list;
+                QVector<sLetter>::iterator temp_l = l;
+                temp_l = temp_l->brackets.begin() + 1;
+                while (temp_l->isBrackets)
+                    temp_l = temp_l->brackets.begin() + 1;
+                temp_list.push_back(temp_l->value)
+
                 debugMsg += ")";
                 switch(variants.indexOf(l->chPow))
                 {
                 case -1: //число a^5 w!= a^5: [EPS],a,aa,aaa,aaaa,a^5Sigma+
                 {
                     debugMsg += QString("^" + QString::number(l->intPow));
+                    if (s_wneq)
+                        grammar_add_any_int(parent_nt, &literal, l->intPow, &temp_list);
                     grammar_add_int(left_part, &literal, l->intPow);
                     break;
                 }
                 case 0: // + w != a+: [EPS], if last: a+E+alpha*: E = sigma\a, alpha = sigma
                 {
                     debugMsg += QString("^" + l->chPow);
+                    if (s_wneq)
+                    {
+                        new_rule.clear();
+                        new_rule.left_part = parent_nt;
+                        new_rule.right_part.push_back("[EPS]");
+                        resultGrammar->AddRule(new_rule);
+                        new_rule.clear();
+                    }
+                        // grammar_add_alpha_any(parent_nt, &literal, 1);////////////////[>1] -> [<1>][ANY] - bad
                     grammar_add_any_plus(left_part, &literal);
                     break;
                 }
                 case 1: // * a^* w != a^*: aplha^+:alpha = sigma\a
                 {
                     debugMsg += QString("^" + l->chPow);
+                    if (s_wneq)
+                        grammar_add_alpha_any(parent_nt, &literal);
                     grammar_add_any(left_part, &literal);
                     break;
                 }
@@ -589,33 +719,33 @@ int Automata::BlockAnalyze()
             else
             {
                 debugMsg += l->value;
-                if (l->havePow)
+                switch(variants.indexOf(l->chPow))
                 {
-                    switch(variants.indexOf(l->chPow))
-                    {
-                    case -1: //число a^5 w!= a^5: [EPS],a,aa,aaa,aaaa,a^5Sigma+
-                    {
-                        debugMsg += QString("^" + QString::number(l->intPow));
-                        grammar_add_int(left_part, &literal, l->intPow);
-                        break;
-                    }
-                    case 0: // + w != a+: [EPS], if last: a+E+alpha*: E = sigma\a, alpha = sigma
-                    {
-                        debugMsg += QString("^" + l->chPow);
-                        grammar_add_any_plus(left_part, &literal);
-                        break;
-                    }
-                    case 1: // * a^* w != a^*: aplha^+:alpha = sigma\a
-                    {
-                        debugMsg += QString("^" + l->chPow);
-                        grammar_add_any(left_part, &literal);
-                        break;
-                    }
-                    }
+                case -1: //число a^5 w!= a^5: [EPS],a,aa,aaa,aaaa,a^5Sigma+
+                {
+                    debugMsg += QString("^" + QString::number(l->intPow));
+                    if (s_wneq)
+                        grammar_add_any_int(parent_nt, &literal, l->intPow, &literal);
+                    grammar_add_int(left_part, &literal, l->intPow);
+                    break;
                 }
-                else
+                case 0: // + w != a+: [EPS], if last: a+E+alpha*: E = sigma\a, alpha = sigma
                 {
-                    grammar_add_int(left_part, &literal, 1);
+                    debugMsg += QString("^" + l->chPow);
+                    if (s_wneq){
+                        grammar_add_alpha_any(parent_nt, &allowed_sigma, 1);
+                    }
+                    grammar_add_any_plus(left_part, &literal);
+                    break;
+                }
+                case 1: // * a^* w != a^*: aplha^+:alpha = sigma\a
+                {
+                    debugMsg += QString("^" + l->chPow);
+                    if (s_wneq)
+                        grammar_add_alpha_any(parent_nt, &allowed_sigma);
+                    grammar_add_any(left_part, &literal);
+                    break;
+                }
                 }
             }
 
@@ -624,6 +754,13 @@ int Automata::BlockAnalyze()
     }
     if (block.first().parent != nullptr)
         current_block = block.first().parent;
+    if (resultGrammar->GetNonTerminals().contains("[ANYPLUS]") && !resultGrammar->ContainsRuleWithNT("[ANYPLUS]"))
+    {
+        if (variants.contains(block.last().chPow))
+        {
+        }
+        grammar_add_any_plus("[ANYPLUS]", &anyplus_sigma);
+    }
     if(token.tokenClass == T_END)
         return S_END;
     return state;
@@ -633,7 +770,7 @@ int Automata::BlockBracketsStart()
 {
     sLetter l;
     l.isBrackets = 1;
-    // l.parent = current_block->first().parent;
+    l.parent = current_block->first().parent;
 
     sLetter temp_l;
     temp_l.isPointer = 1;

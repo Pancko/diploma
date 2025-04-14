@@ -18,9 +18,11 @@ struct sLetter
 
     sLetter();
     sLetter(const QString& in);
+    sLetter(const sLetter& Obj);
 
     void addPow(const QString& in);
 
+    bool operator=(const sLetter& Object);
     bool operator==(const sLetter& Object) const;
     bool operator!=(const sLetter& Object) const;
 };

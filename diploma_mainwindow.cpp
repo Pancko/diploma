@@ -18,6 +18,12 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     automata = new Automata(this);
     spinner = new WaitingSpinnerWidget(ui->output_textEdit);
 
+    QString saveDir = QDir::currentPath() + "/Data/Saves";
+    QDir dir;
+    if (!dir.exists(saveDir)) {
+        dir.mkpath(saveDir);
+    }
+
     ui->stackedWidget->setCurrentWidget(ui->mainMenu_page);
 
     ui->length_lineEdit->setPlaceholderText("10");
@@ -250,7 +256,7 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
     QStringList sigma = ui->sigma_lineEdit->text().split(',', Qt::SkipEmptyParts);
     if (languageCFG->GetTerminals().isEmpty())
     {
-        QFile file = QFile(QDir::currentPath() + "/Data/Resources/LangGr.json");
+        QFile file = QFile(":/Resources/LangGr.json");
         file.open(QIODevice::ReadOnly);
         QJsonDocument doc = QJsonDocument::fromJson(file.readAll());
         err = languageCFG->ReadFromJSON(doc);
@@ -280,30 +286,23 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
         automata->initialize_sigma(sigma);
         generatedCFG = automata->parse(language.first);
 
-        // ui->langCFG_textEdit->setText(languageCFG->PrintGrammar(0,0));
-
-        // if(!languageCFG->ContaisBadNT())
-        // {
-        //     languageCFG->GenerateMultipleWords(10, 10);
-        //     QStringList words = languageCFG->GetWords();
-        //     words.sort();
-        //     for (const QString &word : std::as_const(words))
-        //         ui->langCFG_textEdit->append(word);
-        // }
-        ui->langCFG_textEdit->setText(/*ui->langCFG_textEdit->toPlainText() + */generatedCFG->PrintGrammar(0,0));
+        ui->langCFG_textEdit->setText(generatedCFG->PrintGrammar(0,0));
         generatedCFG->AnalyzeNonTerminals();
-        ui->langCFG_textEdit->append(/*ui->langCFG_textEdit->toPlainText() + */generatedCFG->PrintGrammar(0,0));
+        if (!generatedCFG->ContaisBadNT())
+            ui->langCFG_textEdit->setText(generatedCFG->PrintGrammar(0,0));
+        else
+            ui->langCFG_textEdit->append(generatedCFG->PrintGrammar(0,0));
 
         //qDebug() << generatedCFG->PrintGrammar(1,1);
 
-        // if(!generatedCFG->ContaisBadNT() && (generatedCFG->GetRules().size() != 0))
-        // {
-        //     generatedCFG->GenerateMultipleWords(100, 50);
-        //     QStringList words = generatedCFG->GetWords();
-        //     words.sort();
-        //     for (const QString &word : std::as_const(words))
-        //         ui->langCFG_textEdit->append(word);
-        // }
+        if(!generatedCFG->ContaisBadNT() && (generatedCFG->GetRules().size() != 0))
+        {
+            generatedCFG->GenerateMultipleWords(100, 50);
+            QStringList words = generatedCFG->GetWords();
+            words.sort();
+            for (const QString &word : std::as_const(words))
+                ui->langCFG_textEdit->append(word);
+        }
     }
     else
         ui->language_Label->setText("Язык: " + err);

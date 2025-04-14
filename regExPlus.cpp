@@ -8,7 +8,7 @@ sLetter::sLetter()
     isBrackets = false;
     havePow = false;
     isIntPow = false;
-    intPow = -1;
+    intPow = 1;
     chPow = nullptr;
 }
 
@@ -22,7 +22,7 @@ sLetter::sLetter(const QString& in)
     {
         havePow = false;
         isIntPow = false;
-        intPow = -1;
+        intPow = 1;
         chPow = nullptr;
         return;
     }
@@ -56,6 +56,19 @@ sLetter::sLetter(const QString& in)
     }
 }
 
+sLetter::sLetter(const sLetter &Obj)
+{
+    this->parent = Obj.parent;
+    this->brackets = Obj.brackets;
+    this->value = Obj.value;
+    this->isPointer = Obj.isPointer;
+    this->isBrackets = Obj.isBrackets;
+    this->havePow = Obj.havePow;
+    this->isIntPow = Obj.isIntPow;
+    this->intPow = Obj.intPow;
+    this->chPow = Obj.chPow;
+}
+
 void sLetter::addPow(const QString &in)
 {
     havePow = true;
@@ -85,6 +98,20 @@ void sLetter::addPow(const QString &in)
         return;
     }
     }
+}
+
+bool sLetter::operator=(const sLetter &Obj)
+{
+    this->parent = Obj.parent;
+    this->brackets = Obj.brackets;
+    this->value = Obj.value;
+    this->isPointer = Obj.isPointer;
+    this->isBrackets = Obj.isBrackets;
+    this->havePow = Obj.havePow;
+    this->isIntPow = Obj.isIntPow;
+    this->intPow = Obj.intPow;
+    this->chPow = Obj.chPow;
+    return true;
 }
 
 bool sLetter::operator==(const sLetter &Object) const
