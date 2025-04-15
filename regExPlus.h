@@ -14,6 +14,7 @@ struct sLetter
     bool havePow;
     bool isIntPow;
     int intPow;
+    int pos;
     QString chPow;
 
     sLetter();

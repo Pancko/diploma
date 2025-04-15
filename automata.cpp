@@ -333,24 +333,13 @@ void Automata::grammar_add_any_int(const QString &left_part, const QStringList *
 
     for(const QString &str : *allowed_sigma)
     {
-        for(int j = 0; j < val_ - 1; j++){
+        for(int j = 0; j < val_; j++){
             new_rule.right_part.push_back(str);
             new_rule.right_part.push_back(alpha);
             resultGrammar->AddRule(new_rule);
             new_rule.right_part.removeAll(alpha);
         }
-        new_rule.right_part.push_back(str);
-        new_rule.right_part.push_back(str);
-        new_rule.right_part.push_back("[ANY]");
-        resultGrammar->AddRule(new_rule);
-        if(!resultGrammar->ContainsRuleWithNT("[ANY]")) grammar_add_any("[ANY]", &sigma);
     }
-
-    new_rule.left_part = alpha;
-    new_rule.right_part.clear();
-    new_rule.right_part.push_back("[EPS]");
-    resultGrammar->AddRule(new_rule);
-
     grammar_add_alpha_any(alpha, &new_sigma);
 }
 
@@ -371,19 +360,42 @@ void Automata::grammar_add_int(const QString &left_part, const QStringList *allo
 
 QVector<sLetter>::iterator Automata::find_symbol(const QVector<sLetter>::iterator &current_symbol, int next, bool non_eps)
 {
-    QVector<sLetter>::iterator temp_l = current_symbol
-    int pos_next = next;
-    if (temp_l->isBrackets)
+    QVector<sLetter> block = *current_block;
+    QVector<sLetter>::iterator temp_l = current_symbol;
+    while (temp_l->isBrackets){
+        block = temp_l->brackets;
+        temp_l = block.begin() + 1;
+    }
+    QVector<sLetter>::iterator curr = temp_l;
+    if (next == 0) // Вернуть этот же символ (самый первый в скобках)
     {
-        temp_l = temp_l->brackets.begin() + pos_next;
-        while (temp_l->isBrackets)
-            temp_l = temp_l->brackets.begin() + pos_next;
+        return curr;
     }
     for (int i = 0; i < next; i++)
     {
-        temp_l++;
+        while ((temp_l - block.begin()) == (block.size() - 1)) // последний элемент в блоке (выход из скобок)
+        {
+            if (temp_l->parent == nullptr) return curr;
+            block = *temp_l->parent;
+            temp_l = block.begin() + temp_l->pos;
+        }
+
+        temp_l += 1;
+
+        while (temp_l->isBrackets) // a(b(ca))a вход в скобки
+        {
+            if (temp_l->parent == nullptr)
+                block = blocks;
+            else
+                block = *temp_l->parent;
+            temp_l = temp_l->brackets.begin() + 1;
+        }
+
+        // if (non_eps && temp_l->chPow == '*')
+        //     i--;
+        curr = temp_l;
     }
-    return temp_l;
+    return curr;
 }
 
 int Automata::KeywordStart()
@@ -525,8 +537,10 @@ int Automata::BlockLetter()
 {
     sLetter l;
     l.value = token.val;
-    if(current_block->size() > 0)
+    if(current_block->size() > 0){
         l.parent = current_block->first().parent;
+        l.pos = current_block->first().pos;
+    }
     current_block->push_back(l);
 
     return S_BLOCK;
@@ -611,12 +625,7 @@ int Automata::BlockAnalyze()
                 if(s_wneq){
                     if (l->havePow && l->chPow == '*' && ((l - block.begin()) != (block.size() - 1)))
                     {
-                        QVector<sLetter>::iterator temp_l = l + 1;
-                        if(temp_l->isBrackets){
-                            temp_l = temp_l->brackets.begin() + 1;// надо взять следующий знак и посмотреть кто он по жизни
-                            while (temp_l->isBrackets)
-                                temp_l = temp_l->brackets.begin() + 1; // зашли в самую глубокую скобку
-                        }
+                        QVector<sLetter>::iterator temp_l = find_symbol(l, 1, 1);
                         allowed_sigma.removeAll(temp_l->value);
                         grammar_add_alpha_any(new_rule.left_part, &allowed_sigma);
                     }
@@ -670,11 +679,10 @@ int Automata::BlockAnalyze()
                 literal = {temp};
 
                 QStringList temp_list;
-                QVector<sLetter>::iterator temp_l = l;
-                temp_l = temp_l->brackets.begin() + 1;
-                while (temp_l->isBrackets)
-                    temp_l = temp_l->brackets.begin() + 1;
-                temp_list.push_back(temp_l->value)
+                QVector<sLetter>::iterator temp_l = find_symbol(l);
+                temp_list.push_back(temp_l->value);
+                temp_l = find_symbol(l, 1, 1);
+                temp_list.push_back(temp_l->value);
 
                 debugMsg += ")";
                 switch(variants.indexOf(l->chPow))
@@ -771,10 +779,12 @@ int Automata::BlockBracketsStart()
     sLetter l;
     l.isBrackets = 1;
     l.parent = current_block->first().parent;
+    // l.pos = current_block->size();
 
     sLetter temp_l;
     temp_l.isPointer = 1;
     temp_l.parent = current_block;
+    temp_l.pos = current_block->size();
 
     l.brackets.push_back(temp_l);
 

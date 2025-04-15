@@ -9,6 +9,7 @@ sLetter::sLetter()
     havePow = false;
     isIntPow = false;
     intPow = 1;
+    pos = 0;
     chPow = nullptr;
 }
 
@@ -18,6 +19,7 @@ sLetter::sLetter(const QString& in)
     isPointer = false;
     isBrackets = false;
     value = in;
+    pos = 0;
     if (!in.contains("<sup>"))
     {
         havePow = false;
@@ -65,6 +67,7 @@ sLetter::sLetter(const sLetter &Obj)
     this->isBrackets = Obj.isBrackets;
     this->havePow = Obj.havePow;
     this->isIntPow = Obj.isIntPow;
+    this->pos = Obj.pos;
     this->intPow = Obj.intPow;
     this->chPow = Obj.chPow;
 }
@@ -110,6 +113,7 @@ bool sLetter::operator=(const sLetter &Obj)
     this->havePow = Obj.havePow;
     this->isIntPow = Obj.isIntPow;
     this->intPow = Obj.intPow;
+    this->pos = Obj.pos;
     this->chPow = Obj.chPow;
     return true;
 }
@@ -124,6 +128,7 @@ bool sLetter::operator==(const sLetter &Object) const
     if (this->havePow != Object.havePow) return false;
     if (this->isIntPow != Object.isIntPow) return false;
     if (this->intPow != Object.intPow) return false;
+    if (this->pos != Object.pos) return false;
     if (this->chPow != Object.chPow) return false;
     return true;
 }
