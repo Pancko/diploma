@@ -79,10 +79,10 @@ private:
     QVector<std::tuple<char, int, function_pointer>> detect_table;
     QMap<QChar, int> keyword_begin;
     //
-    QVector<int> prev_states;                   // Список предыдущих состояний
-    QVector<sLetter> blocks;                    // Последовательно идущие блоки
-    QVector<sLetter> *current_block;            // Текущий блок куда записываются подблоки //Подряд идущие блоки одинаковых букв, например вида: a<sup>2</sup>a<sup>*</sup>
-    QStack<QPair<QString, int>> blocks_stack;   // Порождающие блоки вида <[1] - левая часть правила, 2 - номер правила в грамматике>,
+    QVector<int> prev_states;                           // Список предыдущих состояний
+    QVector<sLetter> blocks;                            // Последовательно идущие блоки
+    QVector<sLetter> *current_block;                    // Текущий блок куда записываются подблоки //Подряд идущие блоки одинаковых букв, например вида: a<sup>2</sup>a<sup>*</sup>
+    QMap<QPair<QString, QString>, QString> block_rules; // По сути небольшой автомат который мы генерируем для анализа скобок (A, b) -> B
     //
     void grammar_add_any(const QString& left_part, const QStringList *allowed_sigma);               // Добавляет в грамматику правила вида: left_part -> allowed_sigma*
     void grammar_add_alpha_any(const QString& left_part, const QStringList *allowed_sigma, bool empty_rule = false);    // Добавляет в грамматику правила вида: left_part -> allowed_sigma[ANY]
@@ -90,6 +90,7 @@ private:
     void grammar_add_any_int(const QString& left_part, const QStringList *allowed_sigma,
                              int val_, const QStringList *disallowed_sigma);                        // Добавляет в грамматику правила вида: left_part -> allowed_sigma^n[ALPHA], n != val_
     void grammar_add_int(const QString& left_part, const QStringList *allowed_sigma, int val_);     // Добавляет в грамматику правила вида: left_part -> allowed_sigma^val_
+    void grammar_add_comp(const QString& left_part, const sLetter &l);
     //
     QVector<sLetter>::iterator find_symbol(const QVector<sLetter>::iterator &current_symbol, int next = 0, bool non_eps = false);
 
