@@ -91,6 +91,7 @@ private:
                              int val_, const QStringList *disallowed_sigma);                        // Добавляет в грамматику правила вида: left_part -> allowed_sigma^n[ALPHA], n != val_
     void grammar_add_int(const QString& left_part, const QStringList *allowed_sigma, int val_);     // Добавляет в грамматику правила вида: left_part -> allowed_sigma^val_
     void grammar_add_comp(const QString& left_part, const sLetter &l);
+    void grammar_add_rule(const QString& left_part, const QString& term, const QString& next_part, const QString& find_in, bool force = false);
     //
     QVector<sLetter>::iterator find_symbol(const QVector<sLetter>::iterator &current_symbol, int next = 0, bool non_eps = false);
 

@@ -44,14 +44,14 @@ sLetter::sLetter(const QString& in)
     case 0: // +
     {
         isIntPow = false;
-        intPow = -1;
+        intPow = 1;
         chPow = "+";
         return;
     }
     case 1: // *
     {
         isIntPow = false;
-        intPow = -1;
+        intPow = 1;
         chPow = "*";
         return;
     }
@@ -89,14 +89,14 @@ void sLetter::addPow(const QString &in)
     case 0: // +
     {
         isIntPow = false;
-        intPow = -1;
+        intPow = 1;
         chPow = "+";
         return;
     }
     case 1: // *
     {
         isIntPow = false;
-        intPow = -1;
+        intPow = 1;
         chPow = "*";
         return;
     }
