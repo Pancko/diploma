@@ -440,7 +440,7 @@ void Automata::grammar_add_comp(const QString &left_part, const sLetter &l)
                             comp_s1.insert(comp_s1.indexOf(']'), QString::number(comp));
                             comp_s2.insert(comp_s2.indexOf(']'), QString::number(comp + 1));
 
-                            if(i != 0){
+                            if(i != 0 && !(skip_one && (i == 1))){
                                 new_rule.left_part = comp_s1;
                                 new_rule.right_part.push_back("[EPS]");
                                 resultGrammar->AddRule(new_rule);
