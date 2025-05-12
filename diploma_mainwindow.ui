@@ -45,7 +45,7 @@
        <number>1</number>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="mainMenu_page">
        <layout class="QHBoxLayout" name="horizontalLayout_3">
@@ -101,7 +101,7 @@
           <item>
            <widget class="QPushButton" name="InfiniteTasks_pB">
             <property name="text">
-             <string>Бесконечные задания</string>
+             <string>Генерация КС-грамматик</string>
             </property>
            </widget>
           </item>

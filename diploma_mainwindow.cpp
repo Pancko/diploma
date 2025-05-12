@@ -25,6 +25,8 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     }
 
     ui->stackedWidget->setCurrentWidget(ui->mainMenu_page);
+    ui->Library_pB->hide();
+    ui->PremadeTasks_pB->hide();
 
     ui->length_lineEdit->setPlaceholderText("10");
     ui->wordCount_lineEdit->setPlaceholderText("10");

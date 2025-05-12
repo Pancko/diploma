@@ -72,7 +72,7 @@ private:
 
     PanelLeftSide* panel_left;
 
-    QStringList pages = {"Главное меню", "Бесконечные задания", "Анализ эквивалентности"};
+    QStringList pages = {"Главное меню", "Генерация грамматик", "Анализ эквивалентности"};
 };
 
 #endif // DIPLOMA_MAINWINDOW_H

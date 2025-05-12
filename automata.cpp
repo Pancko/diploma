@@ -1,4 +1,5 @@
 #include "automata.h"
+#include <qdebug.h>
 
 Automata::Automata(QObject *parent): QObject(parent)
 {
