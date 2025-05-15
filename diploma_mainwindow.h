@@ -58,6 +58,16 @@ private slots:
 
     void on_menu_pB_clicked();
 
+    void on_showGrammarCheckBox_checkStateChanged(const Qt::CheckState &arg1);
+
+    void on_compare_Inf_pB_clicked();
+
+    void on_clear_Inf_pB_clicked();
+
+    void on_length_Inf_LineEdit_textChanged(const QString &arg1);
+
+    void on_wordCount_Inf_lineEdit_textChanged(const QString &arg1);
+
 private:
     Ui::Diploma_MainWindow *ui;
 
@@ -68,9 +78,15 @@ private:
     int wordLength;
     int wordCount;
 
-    WaitingSpinnerWidget* spinner;
+    int wordLengthInf;
+    int wordCountInf;
+
+    QVector<WaitingSpinnerWidget*> spinners;
 
     PanelLeftSide* panel_left;
+
+    QString generated_text;
+    QString masked_text;
 
     QStringList pages = {"Главное меню", "Генерация грамматик", "Анализ эквивалентности"};
 };

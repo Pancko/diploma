@@ -16,7 +16,9 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     ui->setupUi(this);
     languageCFG = new CF_Grammar(this);
     automata = new Automata(this);
-    spinner = new WaitingSpinnerWidget(ui->output_textEdit);
+
+    spinners.push_back(new WaitingSpinnerWidget(ui->output_textEdit));
+    spinners.push_back(new WaitingSpinnerWidget(ui->output_Inf_tE));
 
     QString saveDir = QDir::currentPath() + "/Data/Saves";
     QDir dir;
@@ -35,6 +37,13 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     ui->length_lineEdit->setInputMask("09");
     ui->wordCount_lineEdit->setInputMask("09");
 
+    ui->length_Inf_LineEdit->setPlaceholderText("10");
+    ui->wordCount_Inf_lineEdit->setPlaceholderText("10");
+    ui->length_Inf_LineEdit->setText(ui->length_Inf_LineEdit->placeholderText());
+    ui->wordCount_Inf_lineEdit->setText(ui->wordCount_Inf_lineEdit->placeholderText());
+    ui->length_Inf_LineEdit->setInputMask("09");
+    ui->wordCount_Inf_lineEdit->setInputMask("09");
+
     ui->sigma_lineEdit->setPlaceholderText("a,b,c");
     ui->sigma_lineEdit->setText(ui->sigma_lineEdit->placeholderText());
     QRegularExpression rx("([a-vx-z],)*|[a-vx-z]");
@@ -45,6 +54,8 @@ Diploma_MainWindow::Diploma_MainWindow(QWidget *parent)
     panel_left->setOpenEasingCurve (QEasingCurve::Type::OutElastic);
     panel_left->setCloseEasingCurve(QEasingCurve::Type::InElastic);
     panel_left->init();
+
+    ui->compare_Inf_pB->setEnabled(0);
 }
 
 Diploma_MainWindow::~Diploma_MainWindow()
@@ -99,7 +110,7 @@ void Diploma_MainWindow::on_Compare_pB_clicked()
         ui->output_textEdit->append(grammar2->PrintGrammar(isDebug, isPath));
 
         CF_Session* session = new CF_Session();
-        spinner->start();
+        spinners[0]->start();
         ui->clearOutput_pB->setDisabled(1);
         ui->Compare_pB->setDisabled(1);
         session->addThread(grammar1, grammar2, wordLength, wordCount,  ui->output_textEdit);
@@ -226,14 +237,33 @@ QString Diploma_MainWindow::load()
 
 void Diploma_MainWindow::stop_spinner()
 {
-    ui->Compare_pB->setDisabled(0);
-    ui->clearOutput_pB->setDisabled(0);
-    spinner->stop();
+    switch(ui->stackedWidget->currentIndex())
+    {
+    case 2:
+    {
+        ui->Compare_pB->setDisabled(0);
+        ui->clearOutput_pB->setDisabled(0);
+        spinners[0]->stop();
+        break;
+    }
+    case 1:
+    {
+        ui->compare_Inf_pB->setDisabled(0);
+        ui->clear_Inf_pB->setDisabled(0);
+        spinners[1]->stop();
+        break;
+    }
+    }
 }
 
 void Diploma_MainWindow::on_clearOutput_pB_clicked()
 {
     ui->output_textEdit->clear();
+}
+
+void Diploma_MainWindow::on_clear_Inf_pB_clicked()
+{
+    ui->output_Inf_tE->clear();
 }
 
 
@@ -250,6 +280,22 @@ void Diploma_MainWindow::on_wordCount_lineEdit_textChanged(const QString &arg1)
     wordCount = arg1.toInt();
     if (arg1.isEmpty())
         wordCount = ui->wordCount_lineEdit->placeholderText().toInt();
+}
+
+
+void Diploma_MainWindow::on_length_Inf_LineEdit_textChanged(const QString &arg1)
+{
+    wordLengthInf = arg1.toInt();
+    if (arg1.isEmpty())
+        wordLengthInf = ui->length_Inf_LineEdit->placeholderText().toInt();
+}
+
+
+void Diploma_MainWindow::on_wordCount_Inf_lineEdit_textChanged(const QString &arg1)
+{
+    wordCountInf = arg1.toInt();
+    if (arg1.isEmpty())
+        wordCountInf = ui->wordCount_Inf_lineEdit->placeholderText().toInt();
 }
 
 void Diploma_MainWindow::on_langGenerate_pB_clicked()
@@ -305,9 +351,17 @@ void Diploma_MainWindow::on_langGenerate_pB_clicked()
             for (const QString &word : std::as_const(words))
                 ui->langCFG_textEdit->append(word);
         }
+
+        generated_text = ui->langCFG_textEdit->toPlainText();
+        masked_text = generated_text;
+        masked_text.replace(QRegularExpression("[^\n ]"), "*");
+        ui->langCFG_textEdit->setText(masked_text);
+        ui->compare_Inf_pB->setEnabled(1);
     }
-    else
+    else{
         ui->language_Label->setText("Язык: " + err);
+        ui->compare_Inf_pB->setEnabled(0);
+    }
 }
 
 
@@ -351,5 +405,56 @@ void Diploma_MainWindow::on_menu_pB_clicked()
     panel_left->setFixedHeight(proxy->size().height() * 1.2);
     panel_left->setAlignment(Qt::AlignCenter);
     panel_left->openPanel();
+}
+
+
+void Diploma_MainWindow::on_showGrammarCheckBox_checkStateChanged(const Qt::CheckState &arg1)
+{
+    switch(arg1)
+    {
+    case Qt::Unchecked:
+    {
+        ui->langCFG_textEdit->setText(masked_text);
+        break;
+    }
+    case Qt::Checked:
+    {
+        ui->langCFG_textEdit->setText(generated_text);
+        break;
+    }
+    default: break;
+    }
+}
+
+
+void Diploma_MainWindow::on_compare_Inf_pB_clicked()
+{
+    CF_Grammar *grammar1 = generatedCFG;
+    CF_Grammar *grammar2 = new CF_Grammar(this);
+    QString str1 = ui->langCFG_textEdit->toPlainText();
+    QString str2 = ui->langCFG_textEdit_2->toPlainText();
+    QString error;
+    bool isDebug = ui->debug_chBox->checkState();
+    bool isPath = ui->path_chBox->checkState();
+    bool errorFound = false;
+
+    error = grammar2->ReadFromTXT(str2);
+    if (error.size() > 0){
+        ui->output_Inf_tE->append("Грамматика 2. " + error);
+        errorFound = true;
+    }
+    if (!errorFound){
+        ui->output_Inf_tE->append(grammar1->PrintGrammar(0, 0));
+        ui->output_Inf_tE->append(grammar2->PrintGrammar(0, 0));
+
+        CF_Session* session = new CF_Session();
+        spinners[1]->start();
+        ui->clear_Inf_pB->setDisabled(1);
+        ui->compare_Inf_pB->setDisabled(1);
+        session->addThread(grammar1, grammar2, wordLengthInf, wordCountInf,  ui->output_Inf_tE);
+        connect(session, SIGNAL(stopAll()), this, SLOT(stop_spinner()));
+        connect(session, SIGNAL(stopSpin()), this, SLOT(stop_spinner()));
+    } else
+        ui->output_Inf_tE->append("=========================\n");
 }
 
